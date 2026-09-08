@@ -1,0 +1,15 @@
+customer_id,first_name,last_name,province,join_date
+C001,Amahle,Demo,Gauteng,2025-01-05
+C002,Leo,Sample,Western Cape,2025-01-12
+C003,Naledi,Example,KwaZulu-Natal,2025-02-03
+C004,Thabo,Demo,Limpopo,2025-02-10
+C005,Mia,Sample,Free State,2025-03-01
+C006,Lerato,Example, gauteng ,15/03/2025
+C007,Ethan,Demo,western cape,2025/04/02
+C008,Zola,Sample,KZN,2025-04-10
+C009,Aria,Example,Eastern Cape,2025-05-01
+C010,Kabelo,Demo,Mpumalanga,2025-05-20
+C002,Leo,Sample,Western Cape,2025-01-12
+,Noah,Example,Gauteng,2025-06-01
+C011,,Sample,Gauteng,2025-06-02
+C012,Luna,Demo,Limpopo,2025-02-30

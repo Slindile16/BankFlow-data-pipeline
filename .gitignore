@@ -1,0 +1,29 @@
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Local configuration and runtime output
+.env
+.env.*
+!.env.example
+*.log
+data/processed/*
+!data/processed/.gitkeep
+data/rejected/*
+!data/rejected/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

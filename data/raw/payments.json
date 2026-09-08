@@ -1,0 +1,13 @@
+[
+  {"payment_id":"P001","account_id":"A001","payee":"Demo Utilities","amount":"450.00","payment_date":"2025-06-01","status":"completed"},
+  {"payment_id":"P002","account_id":"A002","payee":"Sample Telecom","amount":"299.00","payment_date":"2025-06-02","status":"pending"},
+  {"payment_id":"P003","account_id":"A003","payee":"Example Retail","amount":"120.50","payment_date":"2025-06-03","status":"failed"},
+  {"payment_id":"P004","account_id":"A004","payee":"Demo Services","amount":"80.00","payment_date":"14/06/2025","status":" COMPLETED "},
+  {"payment_id":"P005","account_id":"A005","payee":"Sample Insurance","amount":"650.00","payment_date":"2025/06/05","status":"completed"},
+  {"payment_id":"P002","account_id":"A002","payee":"Sample Telecom","amount":"299.00","payment_date":"2025-06-02","status":"pending"},
+  {"payment_id":"P006","account_id":"A999","payee":"Demo Utilities","amount":"75.00","payment_date":"2025-06-06","status":"completed"},
+  {"payment_id":null,"account_id":"A006","payee":"Example Retail","amount":"25.00","payment_date":"2025-06-06","status":"completed"},
+  {"payment_id":"P007","account_id":"A007","payee":"Demo Services","amount":"invalid","payment_date":"2025-06-06","status":"completed"},
+  {"payment_id":"P008","account_id":"A008","payee":"Sample Telecom","amount":"50.00","payment_date":"2025-06-31","status":"completed"},
+  {"payment_id":"P009","account_id":"A009","payee":"Sample Insurance","amount":"90.00","payment_date":"2025-06-06","status":"unknown"}
+]

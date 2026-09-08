@@ -4,7 +4,7 @@ BankFlow is a data engineering project that will transform messy, fictional bank
 
 The platform will ingest data from multiple file formats, enforce data quality rules, standardise records, load trusted data into PostgreSQL, and support analysis through SQL queries and summary tables.
 
- **Status:** Planning and initial setup. The features below describe the planned implementation.
+ **Status:** Project structure and fictional datasets are ready. Pipeline implementation has not started. The features below describe the planned implementation.
 
 ## Project Objectives
 
@@ -109,6 +109,31 @@ Optional rule-based anomaly flags may highlight unusually large transactions. Th
 | Version control | Git and GitHub |
 | Optional reporting | Power BI, Metabase or a simple dashboard |
 
+## Project Structure
+
+```text
+BankFlow-data-pipeline/
+|-- data/
+|   |-- raw/
+|   |   |-- accounts.csv
+|   |   |-- branches.csv
+|   |   |-- customers.csv
+|   |   |-- payments.json
+|   |   `-- transactions.csv
+|   |-- processed/       # Future clean outputs (generated files ignored)
+|   `-- rejected/        # Future rejected records (generated files ignored)
+|-- docs/
+|   `-- data_dictionary.md
+|-- logs/                # Future runtime logs (generated files ignored)
+|-- sql/                 # Future schema and analytical queries
+|-- src/
+|   `-- bankflow/
+|       `-- __init__.py  # Python package; pipeline implementation pending
+|-- tests/               # Future automated tests
+|-- .gitignore
+`-- README.md
+```
+
 ## Roadmap
 
 - [X] Create the repository, project structure and fictional datasets.
@@ -123,7 +148,13 @@ Optional rule-based anomaly flags may highlight unusually large transactions. Th
 
 ## Getting Started
 
-The project is currently being set up. Installation instructions, environment configuration and pipeline execution commands will be added as the implementation becomes available.
+Start by inspecting the five fictional source files in `data/raw/` and the
+[data dictionary](docs/data_dictionary.md), which documents fields, relationships,
+normalisation cases and intentional invalid records. The fixtures contain 68 records.
+
+The repository and sample data require no installed dependencies to inspect.
+Installation instructions, environment configuration and pipeline execution commands
+will be added with the ingestion implementation. No pipeline command is available yet.
 
 ## Planned Demonstration
 
