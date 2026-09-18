@@ -156,6 +156,35 @@ The repository and sample data require no installed dependencies to inspect.
 Installation instructions, environment configuration and pipeline execution commands
 will be added with the ingestion implementation. No pipeline command is available yet.
 
+## Running Tests
+
+From the project root, with your virtual environment active and development
+dependencies installed (`python -m pip install -e ".[dev]"`), run:
+
+```powershell
+python -m pytest tests/test_ingestion.py -v
+```
+
+This runs the ingestion tests and displays each test's result, followed by a
+pass/fail summary. Run tests through pytest; running `test_ingestion.py` directly
+only defines the test functions and does not execute them.
+
+To run all tests:
+
+```powershell
+python -m pytest -v
+```
+
+If the virtual environment is not active, use its Python executable explicitly:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_ingestion.py -v
+```
+
+`tests/conftest.py` creates a fresh temporary folder for each test run and cleans
+it up afterward. Pytest caching is disabled in `pyproject.toml` to avoid the
+shared-folder permission issues encountered on Windows.
+
 ## Planned Demonstration
 
 The demonstration will follow data through the full pipeline:
