@@ -1,4 +1,4 @@
-"""Customer validation contract, written before the validator implementation.
+"""Customer validation contract.
 
 validate_customers(customers) returns (accepted, rejected) DataFrames.
 Both retain the source columns and row indices. Rejected rows additionally have
@@ -14,7 +14,6 @@ from bankflow import data_validator
 
 @pytest.fixture
 def validator():
-    # The module exists but DataValidator is intentionally not implemented yet.
     return data_validator.DataValidator()
 
 
@@ -136,3 +135,33 @@ def test_validation_does_not_modify_input(validator, valid_customer):
     validator.validate_customers(source)
 
     pd.testing.assert_frame_equal(source, original)
+
+
+def test_empty_customer_data_preserves_columns(validator, valid_customer):
+    source = pd.DataFrame([valid_customer]).iloc[:0]
+
+    accepted, rejected = validator.validate_customers(source)
+
+    pd.testing.assert_frame_equal(accepted, source)
+    assert rejected.empty
+    assert list(rejected.columns) == [*source.columns, "rejection_reasons"]
+
+
+def test_repeated_index_labels_do_not_mix_rejection_reasons(validator, valid_customer):
+    source = pd.DataFrame(
+        [valid_customer, {**valid_customer, "customer_id": "C002", "first_name": ""}],
+        index=[0, 0],
+    )
+
+    accepted, rejected = validator.validate_customers(source)
+
+    pd.testing.assert_frame_equal(accepted, source.iloc[[0]])
+    pd.testing.assert_frame_equal(rejected[source.columns], source.iloc[[1]])
+    assert rejected["rejection_reasons"].tolist() == [["missing_first_name"]]
+
+
+def test_missing_customer_column_reports_schema_problem(validator, valid_customer):
+    source = pd.DataFrame([valid_customer]).drop(columns="join_date")
+
+    with pytest.raises(ValueError, match="Missing customer columns: join_date"):
+        validator.validate_customers(source)
