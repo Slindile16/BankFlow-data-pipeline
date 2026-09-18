@@ -128,9 +128,13 @@ BankFlow-data-pipeline/
 |-- sql/                 # Future schema and analytical queries
 |-- src/
 |   `-- bankflow/
-|       `-- __init__.py  # Python package; pipeline implementation pending
-|-- tests/               # Future automated tests
+|       |-- __init__.py
+|       `-- data_ingestor.py  # CSV and JSON ingestion
+|-- tests/
+|   |-- conftest.py           # Temporary-folder setup for tests
+|   `-- test_data_ingestor.py # Ingestion tests
 |-- .gitignore
+|-- pyproject.toml           # Dependencies, packaging and pytest configuration
 `-- README.md
 ```
 
@@ -162,11 +166,11 @@ From the project root, with your virtual environment active and development
 dependencies installed (`python -m pip install -e ".[dev]"`), run:
 
 ```powershell
-python -m pytest tests/test_ingestion.py -v
+python -m pytest tests/test_data_ingestor.py -v
 ```
 
 This runs the ingestion tests and displays each test's result, followed by a
-pass/fail summary. Run tests through pytest; running `test_ingestion.py` directly
+pass/fail summary. Run tests through pytest; running `test_data_ingestor.py` directly
 only defines the test functions and does not execute them.
 
 To run all tests:
@@ -178,7 +182,7 @@ python -m pytest -v
 If the virtual environment is not active, use its Python executable explicitly:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/test_ingestion.py -v
+.\.venv\Scripts\python.exe -m pytest tests/test_data_ingestor.py -v
 ```
 
 `tests/conftest.py` creates a fresh temporary folder for each test run and cleans
