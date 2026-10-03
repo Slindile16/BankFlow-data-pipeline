@@ -129,7 +129,8 @@ BankFlow-data-pipeline/
 |-- src/
 |   `-- bankflow/
 |       |-- __init__.py
-|       `-- data_ingestor.py  # CSV and JSON ingestion
+|       |-- data_ingestor.py  # CSV and JSON ingestion
+|       `-- data_validator.py # Customer and account validation
 |-- tests/
 |   |-- conftest.py           # Temporary-folder setup for tests
 |   `-- test_data_ingestor.py # Ingestion tests
