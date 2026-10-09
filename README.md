@@ -4,7 +4,7 @@ BankFlow is a data engineering project that will transform messy, fictional bank
 
 The platform will ingest data from multiple file formats, enforce data quality rules, standardise records, load trusted data into PostgreSQL, and support analysis through SQL queries and summary tables.
 
- **Status:** Project structure and fictional datasets are ready. Pipeline implementation has not started. The features below describe the planned implementation.
+ **Status:** CSV/JSON ingestion and validation for all five datasets are implemented. Customer transformation is in place; transformations for other datasets remain planned.
 
 ## Project Objectives
 
@@ -130,10 +130,13 @@ BankFlow-data-pipeline/
 |   `-- bankflow/
 |       |-- __init__.py
 |       |-- data_ingestor.py  # CSV and JSON ingestion
-|       `-- data_validator.py # Customer and account validation
+|       |-- data_validator.py # Customer, account, branch, transaction and payment validation
+|       `-- data_transformer.py # Customer standardization
 |-- tests/
 |   |-- conftest.py           # Temporary-folder setup for tests
-|   `-- test_data_ingestor.py # Ingestion tests
+|   |-- test_data_ingestor.py # Ingestion tests
+|   |-- test_data_validator.py # Validation tests
+|   `-- test_data_transformer.py # Transformation tests
 |-- .gitignore
 |-- pyproject.toml           # Dependencies, packaging and pytest configuration
 `-- README.md
@@ -142,8 +145,10 @@ BankFlow-data-pipeline/
 ## Roadmap
 
 - [X] Create the repository, project structure and fictional datasets.
-- [ ] Implement CSV and JSON ingestion.
-- [ ] Add validation, duplicate detection and rejected-record handling.
+- [X] Implement CSV and JSON ingestion.
+- [X] Add validation and duplicate detection for all five datasets.
+- [X] Separate rejected records and attach rejection reasons.
+- [ ] Write rejected records to `data/rejected/`.
 - [ ] Implement cleaning and transformation rules.
 - [ ] Design the PostgreSQL schema and load validated data.
 - [ ] Create analytical SQL queries and summary tables.
