@@ -12,10 +12,24 @@ class DataValidator:
     CUSTOMER_COLUMNS = (
         "customer_id", "first_name", "last_name", "province", "join_date"
     )
+    BRANCH_COLUMNS = ("branch_id", "branch_name", "city", "province")
     ACCOUNT_COLUMNS = (
         "account_id", "customer_id", "branch_id", "account_type", "balance", "opened_date"
     )
+    TRANSACTION_COLUMNS = (
+        "transaction_id", "account_id", "branch_id", "transaction_type", "amount",
+        "transaction_date",
+    )
+    PAYMENT_COLUMNS = (
+        "payment_id", "account_id", "payee", "amount", "payment_date", "status"
+    )
     ACCOUNT_TYPES = {"savings", "current"}
+    TRANSACTION_TYPES = {"deposit", "withdrawal", "transfer", "card_payment"}
+    PAYMENT_STATUSES = {"completed", "pending", "failed"}
+    PROVINCES = {
+        "eastern cape", "free state", "gauteng", "kwazulu-natal", "limpopo",
+        "mpumalanga", "north west", "northern cape", "western cape",
+    }
     DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d")
 
     @staticmethod
@@ -57,6 +71,69 @@ class DataValidator:
         except (InvalidOperation, ValueError, AttributeError):
             return False
         return amount.is_finite() and amount.as_tuple().exponent >= -2
+
+    @staticmethod
+    def _account_open_dates(accepted_accounts):
+        required = {"account_id", "opened_date"}
+        missing = required - set(accepted_accounts.columns)
+        if missing:
+            raise ValueError(
+                "Missing accepted account columns: "
+                f"{', '.join(sorted(missing))}"
+            )
+        dates = {}
+        for _, row in accepted_accounts.iterrows():
+            if not DataValidator._is_missing(row["account_id"]):
+                dates[str(row["account_id"]).strip()] = DataValidator._parse_date(
+                    row["opened_date"]
+                )
+        return dates
+
+    @staticmethod
+    def _branch_ids(branches):
+        if isinstance(branches, pd.DataFrame):
+            if "branch_id" not in branches.columns:
+                raise ValueError("Missing branch columns: branch_id")
+            values = branches["branch_id"].dropna().astype(str).str.strip()
+        else:
+            values = (str(value).strip() for value in branches if not pd.isna(value))
+        return {value for value in values if value}
+
+    def validate_branches(self, branches):
+        """Return accepted and rejected branches, retaining the original values."""
+        missing_columns = set(self.BRANCH_COLUMNS) - set(branches.columns)
+        if missing_columns:
+            raise ValueError(
+                f"Missing branch columns: {', '.join(sorted(missing_columns))}"
+            )
+        if "rejection_reasons" in branches.columns:
+            raise ValueError("Input must not contain the reserved rejection_reasons column")
+
+        duplicates = branches.duplicated(subset=list(self.BRANCH_COLUMNS), keep="first")
+        all_reasons = []
+        for position, (_, row) in enumerate(branches.iterrows()):
+            reasons = []
+            for field in self.BRANCH_COLUMNS:
+                if self._is_missing(row[field]):
+                    reasons.append(f"missing_{field}")
+
+            if not self._is_missing(row["province"]):
+                province = " ".join(str(row["province"]).strip().casefold().split())
+                if province == "kzn":
+                    province = "kwazulu-natal"
+                if province not in self.PROVINCES:
+                    reasons.append("invalid_province")
+
+            if duplicates.iloc[position]:
+                reasons.append("duplicate_branch")
+            all_reasons.append(reasons)
+
+        accepted_positions = [i for i, reasons in enumerate(all_reasons) if not reasons]
+        rejected_positions = [i for i, reasons in enumerate(all_reasons) if reasons]
+        accepted = branches.iloc[accepted_positions].copy()
+        rejected = branches.iloc[rejected_positions].copy()
+        rejected["rejection_reasons"] = [all_reasons[i] for i in rejected_positions]
+        return accepted, rejected
 
     def validate_customers(self, customers):
         """Return (accepted, rejected), retaining source columns and indices.
@@ -112,13 +189,7 @@ class DataValidator:
                 f"{', '.join(sorted(missing_customer_columns))}"
             )
 
-        if isinstance(branches, pd.DataFrame):
-            if "branch_id" not in branches.columns:
-                raise ValueError("Missing branch columns: branch_id")
-            branch_ids = branches["branch_id"].dropna().astype(str).str.strip()
-        else:
-            branch_ids = pd.Series([str(value).strip() for value in branches])
-        valid_branch_ids = set(branch_ids)
+        valid_branch_ids = self._branch_ids(branches)
 
         customer_join_dates = {}
         for _, customer in accepted_customers.iterrows():
@@ -169,5 +240,130 @@ class DataValidator:
         rejected_positions = [i for i, reasons in enumerate(all_reasons) if reasons]
         accepted = accounts.iloc[accepted_positions].copy()
         rejected = accounts.iloc[rejected_positions].copy()
+        rejected["rejection_reasons"] = [all_reasons[i] for i in rejected_positions]
+        return accepted, rejected
+
+    def validate_transactions(self, transactions, accepted_accounts, branches):
+        """Separate valid transactions from rejected rows without altering source values."""
+        missing_columns = set(self.TRANSACTION_COLUMNS) - set(transactions.columns)
+        if missing_columns:
+            raise ValueError(
+                f"Missing transaction columns: {', '.join(sorted(missing_columns))}"
+            )
+        if "rejection_reasons" in transactions.columns:
+            raise ValueError("Input must not contain the reserved rejection_reasons column")
+
+        account_open_dates = self._account_open_dates(accepted_accounts)
+        valid_branch_ids = self._branch_ids(branches)
+        duplicates = transactions.duplicated(
+            subset=list(self.TRANSACTION_COLUMNS), keep="first"
+        )
+        all_reasons = []
+        for position, (_, row) in enumerate(transactions.iterrows()):
+            reasons = []
+            for field in self.TRANSACTION_COLUMNS:
+                if self._is_missing(row[field]):
+                    reasons.append(f"missing_{field}")
+
+            account_id = (
+                None if self._is_missing(row["account_id"])
+                else str(row["account_id"]).strip()
+            )
+            branch_id = (
+                None if self._is_missing(row["branch_id"])
+                else str(row["branch_id"]).strip()
+            )
+            if account_id is not None and account_id not in account_open_dates:
+                reasons.append("unknown_account_id")
+            if branch_id is not None and branch_id not in valid_branch_ids:
+                reasons.append("unknown_branch_id")
+
+            if not self._is_missing(row["transaction_type"]):
+                normalized_type = " ".join(
+                    str(row["transaction_type"]).strip().casefold().split()
+                )
+                if normalized_type == "card payment":
+                    normalized_type = "card_payment"
+                if normalized_type not in self.TRANSACTION_TYPES:
+                    reasons.append("invalid_transaction_type")
+
+            if not self._is_missing(row["amount"]):
+                if not self._is_valid_balance(row["amount"]):
+                    reasons.append("invalid_amount")
+                elif Decimal(str(row["amount"]).strip()) <= 0:
+                    reasons.append("nonpositive_amount")
+
+            if not self._is_missing(row["transaction_date"]):
+                transaction_date = self._parse_date(row["transaction_date"])
+                if transaction_date is None:
+                    reasons.append("invalid_transaction_date")
+                elif account_id in account_open_dates:
+                    opened_date = account_open_dates[account_id]
+                    if opened_date is not None and transaction_date < opened_date:
+                        reasons.append("transaction_date_before_account_opened_date")
+
+            if duplicates.iloc[position]:
+                reasons.append("duplicate_transaction")
+            all_reasons.append(reasons)
+
+        accepted_positions = [i for i, reasons in enumerate(all_reasons) if not reasons]
+        rejected_positions = [i for i, reasons in enumerate(all_reasons) if reasons]
+        accepted = transactions.iloc[accepted_positions].copy()
+        rejected = transactions.iloc[rejected_positions].copy()
+        rejected["rejection_reasons"] = [all_reasons[i] for i in rejected_positions]
+        return accepted, rejected
+
+    def validate_payments(self, payments, accepted_accounts):
+        """Separate valid payments from rejected rows without altering source values."""
+        missing_columns = set(self.PAYMENT_COLUMNS) - set(payments.columns)
+        if missing_columns:
+            raise ValueError(f"Missing payment columns: {', '.join(sorted(missing_columns))}")
+        if "rejection_reasons" in payments.columns:
+            raise ValueError("Input must not contain the reserved rejection_reasons column")
+
+        account_open_dates = self._account_open_dates(accepted_accounts)
+        duplicates = payments.duplicated(subset=list(self.PAYMENT_COLUMNS), keep="first")
+        all_reasons = []
+        for position, (_, row) in enumerate(payments.iterrows()):
+            reasons = []
+            for field in self.PAYMENT_COLUMNS:
+                if self._is_missing(row[field]):
+                    reasons.append(f"missing_{field}")
+
+            account_id = (
+                None if self._is_missing(row["account_id"])
+                else str(row["account_id"]).strip()
+            )
+            if account_id is not None and account_id not in account_open_dates:
+                reasons.append("unknown_account_id")
+
+            if not self._is_missing(row["status"]):
+                status = str(row["status"]).strip().casefold()
+                if status not in self.PAYMENT_STATUSES:
+                    reasons.append("invalid_status")
+
+            if not self._is_missing(row["amount"]):
+                if not self._is_valid_balance(row["amount"]):
+                    reasons.append("invalid_amount")
+                elif Decimal(str(row["amount"]).strip()) <= 0:
+                    reasons.append("nonpositive_amount")
+
+            if not self._is_missing(row["payment_date"]):
+                payment_date = self._parse_date(row["payment_date"])
+                if payment_date is None:
+                    reasons.append("invalid_payment_date")
+                elif account_id in account_open_dates:
+                    opened_date = account_open_dates[account_id]
+                    if opened_date is not None and payment_date < opened_date:
+                        reasons.append("payment_date_before_account_opened_date")
+
+            if duplicates.iloc[position]:
+                reasons.append("duplicate_payment")
+            all_reasons.append(reasons)
+
+        accepted_positions = [i for i, reasons in enumerate(all_reasons) if not reasons]
+        rejected_positions = [i for i, reasons in enumerate(all_reasons) if reasons]
+        accepted = payments.iloc[accepted_positions].copy()
+        rejected = payments.iloc[rejected_positions].copy()
         rejected["rejection_reasons"] = [all_reasons[i] for i in rejected_positions]
         return accepted, rejected
