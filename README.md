@@ -1,10 +1,10 @@
-# BankFlow 
+# BankFlow
 
 BankFlow is a data engineering project that will transform messy, fictional banking data into clean, validated, analysis-ready datasets.
 
 The platform will ingest data from multiple file formats, enforce data quality rules, standardise records, load trusted data into PostgreSQL, and support analysis through SQL queries and summary tables.
 
- **Status:** CSV/JSON ingestion and validation for all five datasets are implemented. Customer, branch and account transformations are in place; transformations for other datasets remain planned.
+**Status:** Project structure and fictional datasets are ready. Pipeline implementation has not started. The features below describe the planned implementation.
 
 ## Project Objectives
 
@@ -120,23 +120,19 @@ BankFlow-data-pipeline/
 |   |   |-- customers.csv
 |   |   |-- payments.json
 |   |   `-- transactions.csv
-|   |-- processed/       # Future clean outputs (generated files ignored)
-|   `-- rejected/        # Future rejected records (generated files ignored)
+|   |-- processed/           # Future clean outputs (generated files ignored)
+|   `-- rejected/            # Future rejected records (generated files ignored)
 |-- docs/
 |   `-- data_dictionary.md
-|-- logs/                # Future runtime logs (generated files ignored)
-|-- sql/                 # Future schema and analytical queries
+|-- logs/                    # Future runtime logs (generated files ignored)
+|-- sql/                     # Future schema and analytical queries
 |-- src/
 |   `-- bankflow/
 |       |-- __init__.py
-|       |-- data_ingestor.py  # CSV and JSON ingestion
-|       |-- data_validator.py # Customer, account, branch, transaction and payment validation
-|       `-- data_transformer.py # Customer, branch and account standardization
+|       `-- data_ingestor.py  # CSV and JSON ingestion
 |-- tests/
 |   |-- conftest.py           # Temporary-folder setup for tests
-|   |-- test_data_ingestor.py # Ingestion tests
-|   |-- test_data_validator.py # Validation tests
-|   `-- test_data_transformer.py # Transformation tests
+|   `-- test_data_ingestor.py # Ingestion tests
 |-- .gitignore
 |-- pyproject.toml           # Dependencies, packaging and pytest configuration
 `-- README.md
@@ -146,9 +142,7 @@ BankFlow-data-pipeline/
 
 - [X] Create the repository, project structure and fictional datasets.
 - [X] Implement CSV and JSON ingestion.
-- [X] Add validation and duplicate detection for all five datasets.
-- [X] Separate rejected records and attach rejection reasons.
-- [ ] Write rejected records to `data/rejected/`.
+- [ ] Add validation, duplicate detection and rejected-record handling.
 - [ ] Implement cleaning and transformation rules.
 - [ ] Design the PostgreSQL schema and load validated data.
 - [ ] Create analytical SQL queries and summary tables.
