@@ -4,7 +4,7 @@ BankFlow is a data engineering project that will transform messy, fictional bank
 
 The platform will ingest data from multiple file formats, enforce data quality rules, standardise records, load trusted data into PostgreSQL, and support analysis through SQL queries and summary tables.
 
- **Status:** CSV/JSON ingestion and validation for all five datasets are implemented. Customer transformation is in place; transformations for other datasets remain planned.
+ **Status:** CSV/JSON ingestion and validation for all five datasets are implemented. Customer, branch and account transformations are in place; transformations for other datasets remain planned.
 
 ## Project Objectives
 
@@ -131,7 +131,7 @@ BankFlow-data-pipeline/
 |       |-- __init__.py
 |       |-- data_ingestor.py  # CSV and JSON ingestion
 |       |-- data_validator.py # Customer, account, branch, transaction and payment validation
-|       `-- data_transformer.py # Customer standardization
+|       `-- data_transformer.py # Customer, branch and account standardization
 |-- tests/
 |   |-- conftest.py           # Temporary-folder setup for tests
 |   |-- test_data_ingestor.py # Ingestion tests

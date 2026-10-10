@@ -1,6 +1,7 @@
-"""Standardize accepted customer and branch records for downstream use."""
+"""Standardize accepted banking records for downstream use."""
 
 from datetime import date, datetime
+from decimal import Decimal
 
 import pandas as pd
 
@@ -10,6 +11,10 @@ class DataTransformer:
 
     CUSTOMER_COLUMNS = (
         "customer_id", "first_name", "last_name", "province", "join_date"
+    )
+    BRANCH_COLUMNS = ("branch_id", "branch_name", "city", "province")
+    ACCOUNT_COLUMNS = (
+        "account_id", "customer_id", "branch_id", "account_type", "balance", "opened_date"
     )
     DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d")
     PROVINCES = {
@@ -76,5 +81,23 @@ class DataTransformer:
         result["province"] = result["province"].map(self._normalize_province)
         result["join_date"] = result["join_date"].map(
             lambda value: self._normalize_date(value, "join_date")
+        )
+        return result
+
+    def transform_branches(self, branches):
+        """Trim branch text and canonicalize province names."""
+        result = self._prepare(branches, self.BRANCH_COLUMNS, "branch")
+        result["province"] = result["province"].map(self._normalize_province)
+        return result
+
+    def transform_accounts(self, accounts):
+        """Trim account fields, normalize account types, balances, and dates."""
+        result = self._prepare(accounts, self.ACCOUNT_COLUMNS, "account")
+        result["account_type"] = result["account_type"].map(
+            lambda value: str(value).casefold()
+        )
+        result["balance"] = result["balance"].map(lambda value: Decimal(str(value)))
+        result["opened_date"] = result["opened_date"].map(
+            lambda value: self._normalize_date(value, "opened_date")
         )
         return result
