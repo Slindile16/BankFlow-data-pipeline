@@ -58,6 +58,29 @@ def test_valid_customer_is_accepted(validator, valid_customer, join_date):
     assert "rejection_reasons" in rejected.columns
 
 
+@pytest.mark.parametrize("province", [" gauteng ", "WESTERN CAPE", "KZN"])
+def test_customer_province_variants_are_validated(validator, valid_customer, province):
+    valid_customer["province"] = province
+
+    accepted, rejected = validator.validate_customers(pd.DataFrame([valid_customer]))
+
+    assert len(accepted) == 1
+    assert rejected.empty
+
+
+def test_unknown_customer_province_is_rejected(validator, valid_customer):
+    valid_customer["province"] = "Atlantis"
+
+    assert_single_rejection(validator, valid_customer, ["invalid_province"])
+
+
+@pytest.mark.parametrize("province", [None, float("nan"), pd.NA, "", "   "])
+def test_missing_customer_province_is_rejected(validator, valid_customer, province):
+    valid_customer["province"] = province
+
+    assert_single_rejection(validator, valid_customer, ["missing_province"])
+
+
 @pytest.mark.parametrize("missing", [None, float("nan"), pd.NA, "", "   "])
 def test_missing_customer_id_is_rejected(validator, valid_customer, missing):
     valid_customer["customer_id"] = missing

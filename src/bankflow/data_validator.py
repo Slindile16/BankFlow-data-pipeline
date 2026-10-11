@@ -37,6 +37,15 @@ class DataValidator:
         return pd.isna(value) or (isinstance(value, str) and not value.strip())
 
     @classmethod
+    def _is_valid_province(cls, value):
+        if not isinstance(value, str):
+            return False
+        province = " ".join(value.strip().casefold().split())
+        if province == "kzn":
+            province = "kwazulu-natal"
+        return province in cls.PROVINCES
+
+    @classmethod
     def _is_valid_date(cls, value):
         if not isinstance(value, str):
             return False
@@ -118,10 +127,7 @@ class DataValidator:
                     reasons.append(f"missing_{field}")
 
             if not self._is_missing(row["province"]):
-                province = " ".join(str(row["province"]).strip().casefold().split())
-                if province == "kzn":
-                    province = "kwazulu-natal"
-                if province not in self.PROVINCES:
+                if not self._is_valid_province(row["province"]):
                     reasons.append("invalid_province")
 
             if duplicates.iloc[position]:
@@ -138,9 +144,9 @@ class DataValidator:
     def validate_customers(self, customers):
         """Return (accepted, rejected), retaining source columns and indices.
 
-        Check required IDs/names, join dates and exact duplicates. Each rejected
-        row receives a list of reason codes in ``rejection_reasons``. Province
-        validation and conflicting records sharing an ID are not covered yet.
+        Check required IDs/names, provinces, join dates and exact duplicates.
+        Each rejected row receives reason codes in ``rejection_reasons``.
+        Conflicting records sharing an ID are not covered yet.
         """
         missing_columns = set(self.CUSTOMER_COLUMNS) - set(customers.columns)
         if missing_columns:
@@ -152,9 +158,13 @@ class DataValidator:
         all_reasons = []
         for position, (_, row) in enumerate(customers.iterrows()):
             reasons = []
-            for field in ("customer_id", "first_name", "last_name", "join_date"):
+            for field in self.CUSTOMER_COLUMNS:
                 if self._is_missing(row[field]):
                     reasons.append(f"missing_{field}")
+
+            if not self._is_missing(row["province"]):
+                if not self._is_valid_province(row["province"]):
+                    reasons.append("invalid_province")
 
             if not self._is_missing(row["join_date"]) and not self._is_valid_date(row["join_date"]):
                 reasons.append("invalid_join_date")
