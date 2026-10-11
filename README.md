@@ -2,9 +2,9 @@
 
 BankFlow is a Python and Pandas data engineering project that ingests fictional banking data, validates records, and standardises accepted data for downstream use.
 
-The repository currently includes CSV and JSON ingestion, record validation, and transformations for all five datasets. End-to-end orchestration, output writing, PostgreSQL loading, and analytics are planned next.
+The repository includes CSV and JSON ingestion, record validation, transformations for all five datasets, and an end-to-end command that writes processed and rejected CSV files. PostgreSQL loading and analytics are planned next.
 
-**Status:** Ingestion, validation, and transformation components are implemented. The test suite passes. A command that runs the full pipeline and writes processed and rejected outputs is not yet available.
+**Status:** Ingestion, validation, transformation, and processed/rejected output writing are implemented. The component test suite passes.
 
 ## Project Objectives
 
@@ -37,7 +37,7 @@ Raw Data (CSV / JSON)
 Cleaning & Transformation (implemented)
         |
         v
-  Output writing (planned)
+  CSV output writing (implemented)
         |
         v
  PostgreSQL (planned)
@@ -131,12 +131,14 @@ BankFlow-data-pipeline/
 |       |-- __init__.py
 |       |-- data_ingestor.py  # CSV and JSON ingestion
 |       |-- data_validator.py # Validation and rejection reasons
-|       `-- data_transformer.py # Standardisation of accepted records
+|       |-- data_transformer.py # Standardisation of accepted records
+|       `-- pipeline.py       # End-to-end run and CSV output writing
 |-- tests/
 |   |-- conftest.py
 |   |-- test_data_ingestor.py
 |   |-- test_data_validator.py
-|   `-- test_data_transformer.py
+|   |-- test_data_transformer.py
+|   `-- test_pipeline.py
 |-- .gitignore
 |-- pyproject.toml           # Dependencies, packaging and pytest configuration
 `-- README.md
@@ -148,10 +150,10 @@ BankFlow-data-pipeline/
 - [X] Implement CSV and JSON ingestion.
 - [X] Validate records, detect duplicates, and return rejected rows with reasons.
 - [X] Implement cleaning and transformation rules for all five datasets.
-- [ ] Add end-to-end orchestration and write processed and rejected outputs.
+- [X] Add end-to-end orchestration and write processed and rejected outputs.
 - [ ] Design the PostgreSQL schema and load validated data.
 - [ ] Create analytical SQL queries and summary tables.
-- [X] Add tests for ingestion, validation, and transformation.
+- [X] Add tests for ingestion, validation, transformation, and pipeline outputs.
 - [ ] Add logging and stronger runtime error handling.
 - [ ] Schedule the pipeline and containerise the application.
 - [ ] Add an optional reporting layer and complete documentation.
@@ -168,7 +170,13 @@ Install the project and development dependencies in a virtual environment:
 python -m pip install -e ".[dev]"
 ```
 
-The ingestion, validation, and transformation components are currently used as Python modules. A single end-to-end pipeline command will be added with orchestration and output writing.
+Run the complete pipeline from the project root after installation:
+
+```powershell
+python -m bankflow.pipeline
+```
+
+The command reads `data/raw/`, writes accepted and transformed records to `data/processed/`, and writes rejected source rows with JSON-formatted reasons to `data/rejected/`. Each folder receives one CSV per dataset.
 
 ## Running Tests
 
@@ -194,7 +202,7 @@ shared-folder permission issues encountered on Windows.
 The planned demonstration will follow data through the full pipeline:
 
 1. Inspect fictional raw data containing intentional quality issues.
-2. Run the end-to-end ingestion, validation, and transformation command (planned).
+2. Run `python -m bankflow.pipeline` to ingest, validate, transform, and write outputs.
 3. Review rejected records and their rejection reasons.
 4. Inspect clean, related tables in PostgreSQL.
 5. Run analytical SQL queries.
