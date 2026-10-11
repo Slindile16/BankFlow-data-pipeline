@@ -16,6 +16,9 @@ dependencies = [
 dev = [
     "pytest>=8,<10",
 ]
+database = [
+    "psycopg[binary]>=3.2,<4",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
