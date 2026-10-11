@@ -68,7 +68,7 @@ The validator checks:
 - Numeric values and transaction amounts.
 - Account references and relationships between records.
 
-Rejected records are returned separately with rejection reasons. Writing them to files is part of the planned pipeline orchestration.
+Rejected records are returned separately with rejection reasons and written to `data/rejected/` as CSV files. Accepted and transformed records are written to `data/processed/`, with one output file per dataset.
 
 Accepted records can be transformed to standardise dates, province names, account types, transaction categories, payment statuses, and monetary values before downstream use.
 
@@ -120,8 +120,8 @@ BankFlow-data-pipeline/
 |   |   |-- customers.csv
 |   |   |-- payments.json
 |   |   `-- transactions.csv
-|   |-- processed/           # Reserved for generated clean outputs
-|   `-- rejected/            # Reserved for generated rejected outputs
+|   |-- processed/           # Generated accepted and transformed outputs
+|   `-- rejected/            # Generated rejected outputs with reasons
 |-- docs/
 |   `-- data_dictionary.md
 |-- logs/                    # Future runtime logs (generated files ignored)
