@@ -16,6 +16,13 @@ class DataTransformer:
     ACCOUNT_COLUMNS = (
         "account_id", "customer_id", "branch_id", "account_type", "balance", "opened_date"
     )
+    TRANSACTION_COLUMNS = (
+        "transaction_id", "account_id", "branch_id", "transaction_type", "amount",
+        "transaction_date",
+    )
+    PAYMENT_COLUMNS = (
+        "payment_id", "account_id", "payee", "amount", "payment_date", "status"
+    )
     DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d")
     PROVINCES = {
         "eastern cape": "Eastern Cape",
@@ -99,5 +106,27 @@ class DataTransformer:
         result["balance"] = result["balance"].map(lambda value: Decimal(str(value)))
         result["opened_date"] = result["opened_date"].map(
             lambda value: self._normalize_date(value, "opened_date")
+        )
+        return result
+
+    def transform_transactions(self, transactions):
+        """Trim transaction fields and standardize type, amount, and date."""
+        result = self._prepare(transactions, self.TRANSACTION_COLUMNS, "transaction")
+        result["transaction_type"] = result["transaction_type"].map(
+            lambda value: "_".join(str(value).casefold().split())
+        )
+        result["amount"] = result["amount"].map(lambda value: Decimal(str(value)))
+        result["transaction_date"] = result["transaction_date"].map(
+            lambda value: self._normalize_date(value, "transaction_date")
+        )
+        return result
+
+    def transform_payments(self, payments):
+        """Trim payment fields and standardize status, amount, and date."""
+        result = self._prepare(payments, self.PAYMENT_COLUMNS, "payment")
+        result["status"] = result["status"].map(lambda value: str(value).casefold())
+        result["amount"] = result["amount"].map(lambda value: Decimal(str(value)))
+        result["payment_date"] = result["payment_date"].map(
+            lambda value: self._normalize_date(value, "payment_date")
         )
         return result
