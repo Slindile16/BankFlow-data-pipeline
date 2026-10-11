@@ -1,10 +1,10 @@
 # BankFlow
 
-BankFlow is a data engineering project that will transform messy, fictional banking data into clean, validated, analysis-ready datasets.
+BankFlow is a Python and Pandas data engineering project that ingests fictional banking data, validates records, and standardises accepted data for downstream use.
 
-The platform will ingest data from multiple file formats, enforce data quality rules, standardise records, load trusted data into PostgreSQL, and support analysis through SQL queries and summary tables.
+The repository currently includes CSV and JSON ingestion, record validation, and transformations for all five datasets. End-to-end orchestration, output writing, PostgreSQL loading, and analytics are planned next.
 
-**Status:** Project structure and fictional datasets are ready. Pipeline implementation has not started. The features below describe the planned implementation.
+**Status:** Ingestion, validation, and transformation components are implemented. The test suite passes. A command that runs the full pipeline and writes processed and rejected outputs is not yet available.
 
 ## Project Objectives
 
@@ -22,25 +22,25 @@ Banking data can arrive with missing identifiers, duplicate transactions, incons
 
 BankFlow will address these issues through explicit validation and transformation rules, helping prevent invalid records from entering trusted datasets.
 
-## Planned Pipeline
+## Pipeline Status
 
 ```text
 Raw Data (CSV / JSON)
         |
         v
-     Ingestion
+     Ingestion (implemented)
         |
         v
-     Validation ------> Rejected Records + Rejection Reasons
+     Validation (implemented) ------> Rejected DataFrames + Reasons
         |
         v
-Cleaning & Transformation
+Cleaning & Transformation (implemented)
         |
         v
-    PostgreSQL
+  Output writing (planned)
         |
         v
-SQL Analytics & Summary Tables
+ PostgreSQL (planned)
         |
         v
 Optional Dashboard
@@ -60,7 +60,7 @@ All data used in this project will be fictional.
 
 ## Data Quality and Transformation
 
-The pipeline will check:
+The validator checks:
 
 - Required fields and identifiers.
 - Duplicate records and transactions.
@@ -68,9 +68,9 @@ The pipeline will check:
 - Numeric values and transaction amounts.
 - Account references and relationships between records.
 
-Rejected records will be stored separately with reasons for rejection.
+Rejected records are returned separately with rejection reasons. Writing them to files is part of the planned pipeline orchestration.
 
-Accepted records will be transformed to standardise dates, province names, account types and transaction categories before loading into PostgreSQL.
+Accepted records can be transformed to standardise dates, province names, account types, transaction categories, payment statuses, and monetary values before downstream use.
 
 ## Planned Database Model
 
@@ -120,8 +120,8 @@ BankFlow-data-pipeline/
 |   |   |-- customers.csv
 |   |   |-- payments.json
 |   |   `-- transactions.csv
-|   |-- processed/           # Future clean outputs (generated files ignored)
-|   `-- rejected/            # Future rejected records (generated files ignored)
+|   |-- processed/           # Reserved for generated clean outputs
+|   `-- rejected/            # Reserved for generated rejected outputs
 |-- docs/
 |   `-- data_dictionary.md
 |-- logs/                    # Future runtime logs (generated files ignored)
@@ -129,10 +129,14 @@ BankFlow-data-pipeline/
 |-- src/
 |   `-- bankflow/
 |       |-- __init__.py
-|       `-- data_ingestor.py  # CSV and JSON ingestion
+|       |-- data_ingestor.py  # CSV and JSON ingestion
+|       |-- data_validator.py # Validation and rejection reasons
+|       `-- data_transformer.py # Standardisation of accepted records
 |-- tests/
-|   |-- conftest.py           # Temporary-folder setup for tests
-|   `-- test_data_ingestor.py # Ingestion tests
+|   |-- conftest.py
+|   |-- test_data_ingestor.py
+|   |-- test_data_validator.py
+|   `-- test_data_transformer.py
 |-- .gitignore
 |-- pyproject.toml           # Dependencies, packaging and pytest configuration
 `-- README.md
@@ -142,38 +146,34 @@ BankFlow-data-pipeline/
 
 - [X] Create the repository, project structure and fictional datasets.
 - [X] Implement CSV and JSON ingestion.
-- [ ] Add validation, duplicate detection and rejected-record handling.
-- [ ] Implement cleaning and transformation rules.
+- [X] Validate records, detect duplicates, and return rejected rows with reasons.
+- [X] Implement cleaning and transformation rules for all five datasets.
+- [ ] Add end-to-end orchestration and write processed and rejected outputs.
 - [ ] Design the PostgreSQL schema and load validated data.
 - [ ] Create analytical SQL queries and summary tables.
-- [ ] Add tests, logging and stronger error handling.
+- [X] Add tests for ingestion, validation, and transformation.
+- [ ] Add logging and stronger runtime error handling.
 - [ ] Schedule the pipeline and containerise the application.
 - [ ] Add an optional reporting layer and complete documentation.
 
 ## Getting Started
 
-Start by inspecting the five fictional source files in `data/raw/` and the
+Inspect the five fictional source files in `data/raw/` and the
 [data dictionary](docs/data_dictionary.md), which documents fields, relationships,
 normalisation cases and intentional invalid records. The fixtures contain 68 records.
 
-The repository and sample data require no installed dependencies to inspect.
-Installation instructions, environment configuration and pipeline execution commands
-will be added with the ingestion implementation. No pipeline command is available yet.
+Install the project and development dependencies in a virtual environment:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+The ingestion, validation, and transformation components are currently used as Python modules. A single end-to-end pipeline command will be added with orchestration and output writing.
 
 ## Running Tests
 
 From the project root, with your virtual environment active and development
-dependencies installed (`python -m pip install -e ".[dev]"`), run:
-
-```powershell
-python -m pytest tests/test_data_ingestor.py -v
-```
-
-This runs the ingestion tests and displays each test's result, followed by a
-pass/fail summary. Run tests through pytest; running `test_data_ingestor.py` directly
-only defines the test functions and does not execute them.
-
-To run all tests:
+dependencies installed, run the full test suite:
 
 ```powershell
 python -m pytest -v
@@ -182,7 +182,7 @@ python -m pytest -v
 If the virtual environment is not active, use its Python executable explicitly:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/test_data_ingestor.py -v
+.\.venv\Scripts\python.exe -m pytest -v
 ```
 
 `tests/conftest.py` creates a fresh temporary folder for each test run and cleans
@@ -191,10 +191,10 @@ shared-folder permission issues encountered on Windows.
 
 ## Planned Demonstration
 
-The demonstration will follow data through the full pipeline:
+The planned demonstration will follow data through the full pipeline:
 
 1. Inspect fictional raw data containing intentional quality issues.
-2. Run ingestion, validation and transformation.
+2. Run the end-to-end ingestion, validation, and transformation command (planned).
 3. Review rejected records and their rejection reasons.
 4. Inspect clean, related tables in PostgreSQL.
 5. Run analytical SQL queries.
