@@ -238,7 +238,6 @@ the console and save them to `logs/bankflow.log`:
 
 ```powershell
 python -m bankflow.pipeline
-Get-Content .\logs\bankflow.log
 ```
 
 The pipeline and database loader write INFO and higher messages to the console
