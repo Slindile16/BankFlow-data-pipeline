@@ -1,11 +1,14 @@
 """Run the BankFlow ingestion, validation, and transformation workflow."""
 
 import json
+import logging
 from pathlib import Path
 
 from bankflow.data_ingestor import DataIngestor
 from bankflow.data_transformer import DataTransformer
 from bankflow.data_validator import DataValidator
+
+logger = logging.getLogger(__name__)
 
 
 class DataPipeline:
@@ -36,6 +39,13 @@ class DataPipeline:
         Returns a mapping from dataset name to its transformed accepted frame and
         original-value rejected frame.
         """
+        try:
+            return self._run()
+        except Exception:
+            logger.exception("Pipeline failed")
+            raise
+
+    def _run(self):
         source = self.ingestor.load_all_data()
 
         accepted_branches, rejected_branches = self.validator.validate_branches(
@@ -82,6 +92,12 @@ class DataPipeline:
             self._write_rejected(
                 rejected[name], self.rejected_data_folder / f"{name}.csv"
             )
+            logger.info(
+                "%s: %d accepted, %d rejected",
+                name,
+                len(accepted[name]),
+                len(rejected[name]),
+            )
 
         return {
             name: {"accepted": accepted[name], "rejected": rejected[name]}
@@ -91,18 +107,17 @@ class DataPipeline:
 
 def main():
     """Run the pipeline using the repository's standard data folders."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     project_root = Path(__file__).resolve().parents[2]
     pipeline = DataPipeline(
         raw_data_folder=project_root / "data" / "raw",
         processed_data_folder=project_root / "data" / "processed",
         rejected_data_folder=project_root / "data" / "rejected",
     )
-    results = pipeline.run()
-    for name, frames in results.items():
-        print(
-            f"{name}: {len(frames['accepted'])} accepted, "
-            f"{len(frames['rejected'])} rejected"
-        )
+    pipeline.run()
 
 
 if __name__ == "__main__":

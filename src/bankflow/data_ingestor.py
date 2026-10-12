@@ -1,6 +1,9 @@
+import logging
 from pathlib import Path
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 class DataIngestor:
@@ -10,11 +13,23 @@ class DataIngestor:
 
     def read_csv(self, filename):
         file_path = self.raw_data_folder / filename
-        return pd.read_csv(file_path)
+        try:
+            data = pd.read_csv(file_path)
+        except Exception:
+            logger.exception("Failed to read CSV file %s", file_path)
+            raise
+        logger.info("Loaded CSV file %s: %d rows", file_path.name, len(data))
+        return data
 
     def read_json(self, filename):
         file_path = self.raw_data_folder / filename
-        return pd.read_json(file_path)
+        try:
+            data = pd.read_json(file_path)
+        except Exception:
+            logger.exception("Failed to read JSON file %s", file_path)
+            raise
+        logger.info("Loaded JSON file %s: %d rows", file_path.name, len(data))
+        return data
 
     def load_all_data(self):
         return {
@@ -27,6 +42,10 @@ class DataIngestor:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     ingestor = DataIngestor("data/raw")
     datasets = ingestor.load_all_data()
 

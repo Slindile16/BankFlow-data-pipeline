@@ -2,8 +2,11 @@
 
 import csv
 import getpass
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 DATASET_COLUMNS = {
@@ -75,6 +78,13 @@ class PostgresLoader:
         foreign-key order and commit together, so a failed dataset rolls back
         the complete load.
         """
+        try:
+            return self._load_processed_data(processed_folder)
+        except Exception:
+            logger.exception("PostgreSQL load failed")
+            raise
+
+    def _load_processed_data(self, processed_folder):
         processed_folder = Path(processed_folder)
         paths = {
             dataset: processed_folder / f"{dataset}.csv"
@@ -103,12 +113,17 @@ class PostgresLoader:
                     rows = rows_by_dataset[dataset]
                     if rows:
                         cursor.executemany(self._insert_statement(dataset), rows)
+                    logger.info("Loaded %s: %d rows", dataset, len(rows))
 
         return {dataset: len(rows_by_dataset[dataset]) for dataset in LOAD_ORDER}
 
 
 def main():
     """Load repository processed files using local PostgreSQL defaults."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     project_root = Path(__file__).resolve().parents[2]
     connection_parameters = {
         "host": os.getenv("BANKFLOW_DB_HOST", "localhost"),
@@ -117,11 +132,9 @@ def main():
         "user": os.getenv("BANKFLOW_DB_USER", "postgres"),
         "password": getpass.getpass("PostgreSQL password: "),
     }
-    loaded = PostgresLoader(connection_parameters).load_processed_data(
+    PostgresLoader(connection_parameters).load_processed_data(
         project_root / "data" / "processed"
     )
-    for dataset, count in loaded.items():
-        print(f"{dataset}: {count} rows loaded")
 
 
 if __name__ == "__main__":
