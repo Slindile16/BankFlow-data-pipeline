@@ -2,9 +2,9 @@
 
 BankFlow is a Python and Pandas data engineering project that ingests fictional banking data, validates records, and standardises accepted data for downstream use.
 
-The repository includes CSV and JSON ingestion, record validation, transformations for all five datasets, an end-to-end command that writes processed and rejected CSV files, a command for loading processed data into PostgreSQL, and PostgreSQL analytical views.
+The repository includes CSV and JSON ingestion, record validation, transformations for all five datasets, an end-to-end command that writes processed and rejected CSV files, a command for loading processed data into PostgreSQL, PostgreSQL analytical views, and runtime logging.
 
-**Status:** Ingestion, validation, transformation, processed/rejected CSV output, optional PostgreSQL loading, and analytical views are implemented. The test suite passes, and the sample data has been loaded and verified in PostgreSQL.
+**Status:** Ingestion, validation, transformation, processed/rejected CSV output, optional PostgreSQL loading, analytical views, and runtime logging are implemented. The test suite passes, and the sample data has been loaded and verified in PostgreSQL.
 
 ## Project Objectives
 
@@ -152,13 +152,14 @@ BankFlow-data-pipeline/
 |   `-- rejected/            # Generated rejected outputs with reasons
 |-- docs/
 |   `-- data_dictionary.md
-|-- logs/                    # Future runtime logs (generated files ignored)
+|-- logs/                    # Generated runtime logs (ignored by Git)
 |-- sql/
 |   |-- schema.sql            # PostgreSQL tables and integrity constraints
 |   `-- analytics.sql         # Analytical summary views
 |-- src/
 |   `-- bankflow/
 |       |-- __init__.py
+|       |-- logging_config.py # Shared console and rotating-file logging setup
 |       |-- data_ingestor.py  # CSV and JSON ingestion
 |       |-- data_validator.py # Validation and rejection reasons
 |       |-- data_transformer.py # Standardisation of accepted records
@@ -188,7 +189,7 @@ BankFlow-data-pipeline/
 - [X] Load and verify the sample datasets in PostgreSQL.
 - [X] Create analytical SQL queries and summary views.
 - [X] Add tests for ingestion, validation, transformation, and pipeline outputs.
-- [ ] Add logging and stronger runtime error handling.
+- [X] Add logging and stronger runtime error handling.
 - [ ] Schedule the pipeline and containerise the application.
 - [ ] Add an optional reporting layer and complete documentation.
 
@@ -229,6 +230,23 @@ python -m pytest -v
 
 The pipeline writes processed and rejected CSV files. Creating and querying
 PostgreSQL tables requires access to a PostgreSQL server, either local or hosted.
+
+### Logging
+
+Run the pipeline to see the accepted and rejected counts for each dataset in
+the console and save them to `logs/bankflow.log`:
+
+```powershell
+python -m bankflow.pipeline
+Get-Content .\logs\bankflow.log
+```
+
+The pipeline and database loader write INFO and higher messages to the console
+and log file. Each pipeline run adds file-loading messages and accepted/rejected
+counts. The log file rotates after reaching 1 MB, keeping up to three older
+files. Log files are generated locally and ignored by Git. When an ingestion,
+pipeline, or database load operation fails, BankFlow logs the error with its
+traceback and re-raises the original exception.
 
 ### 2. Optional: Install and start PostgreSQL on Windows
 

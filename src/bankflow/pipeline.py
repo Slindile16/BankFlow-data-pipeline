@@ -7,6 +7,7 @@ from pathlib import Path
 from bankflow.data_ingestor import DataIngestor
 from bankflow.data_transformer import DataTransformer
 from bankflow.data_validator import DataValidator
+from bankflow.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +108,7 @@ class DataPipeline:
 
 def main():
     """Run the pipeline using the repository's standard data folders."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    configure_logging()
     project_root = Path(__file__).resolve().parents[2]
     pipeline = DataPipeline(
         raw_data_folder=project_root / "data" / "raw",

@@ -6,6 +6,8 @@ import logging
 import os
 from pathlib import Path
 
+from bankflow.logging_config import configure_logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -120,10 +122,7 @@ class PostgresLoader:
 
 def main():
     """Load repository processed files using local PostgreSQL defaults."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    configure_logging()
     project_root = Path(__file__).resolve().parents[2]
     connection_parameters = {
         "host": os.getenv("BANKFLOW_DB_HOST", "localhost"),

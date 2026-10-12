@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+from bankflow.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +43,7 @@ class DataIngestor:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    configure_logging()
     ingestor = DataIngestor("data/raw")
     datasets = ingestor.load_all_data()
 
