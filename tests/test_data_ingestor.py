@@ -1,5 +1,6 @@
 """Tests for reading source files before validation and transformation."""
 
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -31,6 +32,17 @@ def test_read_csv_loads_columns_and_records(tmp_path):
     pd.testing.assert_frame_equal(result, expected, check_dtype=False)
 
 
+def test_read_csv_logs_filename_and_row_count(tmp_path, caplog):
+    (tmp_path / "customers.csv").write_text(
+        "customer_id\nC001\nC002\n", encoding="utf-8"
+    )
+
+    with caplog.at_level(logging.INFO):
+        DataIngestor(tmp_path).read_csv("customers.csv")
+
+    assert "Loaded CSV file customers.csv: 2 rows" in caplog.text
+
+
 def test_read_json_loads_records_and_missing_values(tmp_path):
     source = tmp_path / "payments.json"
     source.write_text(
@@ -52,11 +64,17 @@ def test_read_json_loads_records_and_missing_values(tmp_path):
     "method,filename",
     [("read_csv", "missing.csv"), ("read_json", "missing.json")],
 )
-def test_missing_source_raises_file_not_found(tmp_path, method, filename):
+def test_missing_source_logs_context_and_raises_file_not_found(
+    tmp_path, method, filename, caplog
+):
     ingestor = DataIngestor(tmp_path)
 
     with pytest.raises(FileNotFoundError):
-        getattr(ingestor, method)(filename)
+        with caplog.at_level(logging.ERROR):
+            getattr(ingestor, method)(filename)
+
+    assert filename in caplog.text
+    assert "Failed to read" in caplog.text
 
 
 def test_malformed_csv_raises_parser_error(tmp_path):

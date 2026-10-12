@@ -1,13 +1,15 @@
 """End-to-end pipeline output checks."""
 
 import json
+import logging
 
 import pandas as pd
+import pytest
 
 from bankflow.pipeline import DataPipeline
 
 
-def test_pipeline_writes_transformed_and_rejected_dataset_outputs(tmp_path):
+def test_pipeline_writes_transformed_and_rejected_dataset_outputs(tmp_path, caplog):
     raw = tmp_path / "raw"
     processed = tmp_path / "processed"
     rejected = tmp_path / "rejected"
@@ -32,7 +34,8 @@ def test_pipeline_writes_transformed_and_rejected_dataset_outputs(tmp_path):
         [{"payment_id": "P001", "account_id": "A001", "payee": "Utilities", "amount": "5.00", "payment_date": "2025-01-05", "status": "COMPLETED"}]
     ).to_json(raw / "payments.json", orient="records")
 
-    results = DataPipeline(raw, processed, rejected).run()
+    with caplog.at_level(logging.INFO):
+        results = DataPipeline(raw, processed, rejected).run()
 
     assert {name: (len(frames["accepted"]), len(frames["rejected"]))
             for name, frames in results.items()} == {
@@ -56,3 +59,27 @@ def test_pipeline_writes_transformed_and_rejected_dataset_outputs(tmp_path):
     assert json.loads(customer_rejections.loc[0, "rejection_reasons"]) == [
         "missing_first_name"
     ]
+
+    for dataset, frames in results.items():
+        assert (
+            f"{dataset}: {len(frames['accepted'])} accepted, "
+            f"{len(frames['rejected'])} rejected"
+        ) in caplog.text
+
+
+def test_pipeline_logs_and_reraises_source_read_failure(tmp_path, monkeypatch, caplog):
+    pipeline = DataPipeline(
+        tmp_path / "raw", tmp_path / "processed", tmp_path / "rejected"
+    )
+
+    def fail_to_read_sources():
+        raise OSError("source folder is unavailable")
+
+    monkeypatch.setattr(pipeline.ingestor, "load_all_data", fail_to_read_sources)
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(OSError, match="source folder is unavailable"):
+            pipeline.run()
+
+    assert "Pipeline failed" in caplog.text
+    assert "source folder is unavailable" in caplog.text

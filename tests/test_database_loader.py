@@ -1,5 +1,6 @@
 """Tests for loading processed CSV datasets into PostgreSQL."""
 
+import logging
 import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -62,7 +63,7 @@ def make_fake_connection():
 
 
 def test_loader_upserts_all_processed_datasets_in_foreign_key_order(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, caplog
 ):
     write_processed_files(tmp_path)
     connection, cursor = make_fake_connection()
@@ -80,7 +81,8 @@ def test_loader_upserts_all_processed_datasets_in_foreign_key_order(
         SimpleNamespace(connect=connect),
     )
 
-    PostgresLoader(connection_parameters).load_processed_data(tmp_path)
+    with caplog.at_level(logging.INFO):
+        loaded = PostgresLoader(connection_parameters).load_processed_data(tmp_path)
 
     assert connect.call_args.kwargs == connection_parameters
     assert [call.args[0].split("(")[0].split()[-1] for call in cursor.executemany.call_args_list] == [
@@ -93,6 +95,9 @@ def test_loader_upserts_all_processed_datasets_in_foreign_key_order(
         "ON CONFLICT" in call.args[0]
         for call in cursor.executemany.call_args_list
     )
+    assert loaded == {dataset: 1 for dataset in DATASETS}
+    for dataset in DATASETS:
+        assert f"Loaded {dataset}: 1 rows" in caplog.text
 
 
 def test_loader_requires_all_processed_dataset_files_before_connecting(tmp_path, monkeypatch):
@@ -107,3 +112,21 @@ def test_loader_requires_all_processed_dataset_files_before_connecting(tmp_path,
         PostgresLoader({"host": "localhost"}).load_processed_data(tmp_path)
 
     connect.assert_not_called()
+
+
+def test_loader_logs_and_reraises_database_failure(tmp_path, monkeypatch, caplog):
+    write_processed_files(tmp_path)
+    connection, _ = make_fake_connection()
+    connection.__enter__.side_effect = RuntimeError("database is unavailable")
+    monkeypatch.setitem(
+        sys.modules,
+        "psycopg",
+        SimpleNamespace(connect=MagicMock(return_value=connection)),
+    )
+
+    with caplog.at_level(logging.ERROR):
+        with pytest.raises(RuntimeError, match="database is unavailable"):
+            PostgresLoader({"host": "localhost"}).load_processed_data(tmp_path)
+
+    assert "PostgreSQL load failed" in caplog.text
+    assert "database is unavailable" in caplog.text
