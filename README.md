@@ -2,9 +2,9 @@
 
 BankFlow is a Python and Pandas data engineering project that ingests fictional banking data, validates records, and standardises accepted data for downstream use.
 
-The repository includes CSV and JSON ingestion, record validation, transformations for all five datasets, an end-to-end command that writes processed and rejected CSV files, and a command for loading processed data into PostgreSQL. Analytics are planned next.
+The repository includes CSV and JSON ingestion, record validation, transformations for all five datasets, an end-to-end command that writes processed and rejected CSV files, a command for loading processed data into PostgreSQL, and PostgreSQL analytical views.
 
-**Status:** Ingestion, validation, transformation, and processed/rejected CSV output are implemented. PostgreSQL schema creation and loading are optional and implemented. The test suite passes, and the sample data has been loaded and verified in PostgreSQL.
+**Status:** Ingestion, validation, transformation, processed/rejected CSV output, optional PostgreSQL loading, and analytical views are implemented. The test suite passes, and the sample data has been loaded and verified in PostgreSQL.
 
 ## Project Objectives
 
@@ -83,10 +83,11 @@ Accepted records can be transformed to standardise dates, province names, accoun
 | `payments` | Stores payment records | References `accounts` through `account_id` |
 
 The PostgreSQL table definitions and integrity constraints are in [sql/schema.sql](sql/schema.sql).
+Analytical summary views are defined in [sql/analytics.sql](sql/analytics.sql).
 
 ## Analytics
 
-The project will support questions such as:
+The analytical views answer questions such as:
 
 - How many transactions occur each day and by transaction type?
 - Which branches process the highest transaction volumes?
@@ -95,6 +96,32 @@ The project will support questions such as:
 - How many records are rejected, and what are the most common reasons?
 
 Optional rule-based anomaly flags may highlight unusually large transactions. These will demonstrate basic analytical rules, not real fraud detection.
+
+Apply the analytics views after creating the database tables:
+
+```powershell
+& "$pgBin\psql.exe" -U postgres -d bankflow -f ".\sql\analytics.sql"
+```
+
+The script can be applied again safely. It creates or replaces these views:
+
+| View | Summary |
+| --- | --- |
+| `daily_transaction_summary` | Transaction count, distinct accounts, and amounts by date and type |
+| `branch_transaction_summary` | Transaction volume and amounts by branch, including branches with no transactions |
+| `monthly_customer_growth` | New signups and cumulative customer count by month |
+| `customer_province_summary` | Customer counts and percentage by province |
+| `monthly_payment_summary` | Payment counts and amounts by month and status |
+
+For example, query a summary with:
+
+```powershell
+& "$pgBin\psql.exe" -U postgres -d bankflow -c "SELECT * FROM daily_transaction_summary ORDER BY transaction_date, transaction_type;"
+```
+
+These are views rather than stored summary tables, so they stay in sync with the
+underlying tables whenever the loader adds or updates records. Rejected records
+are kept in CSV files and are not included in these database summaries.
 
 ## Technology Stack
 
@@ -127,7 +154,8 @@ BankFlow-data-pipeline/
 |   `-- data_dictionary.md
 |-- logs/                    # Future runtime logs (generated files ignored)
 |-- sql/
-|   `-- schema.sql            # PostgreSQL tables and integrity constraints
+|   |-- schema.sql            # PostgreSQL tables and integrity constraints
+|   `-- analytics.sql         # Analytical summary views
 |-- src/
 |   `-- bankflow/
 |       |-- __init__.py
@@ -158,7 +186,7 @@ BankFlow-data-pipeline/
 - [X] Design the PostgreSQL schema.
 - [X] Implement loading processed data into PostgreSQL.
 - [X] Load and verify the sample datasets in PostgreSQL.
-- [ ] Create analytical SQL queries and summary tables.
+- [X] Create analytical SQL queries and summary views.
 - [X] Add tests for ingestion, validation, transformation, and pipeline outputs.
 - [ ] Add logging and stronger runtime error handling.
 - [ ] Schedule the pipeline and containerise the application.
