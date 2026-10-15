@@ -2,9 +2,9 @@
 
 BankFlow is a Python and Pandas data engineering project that ingests fictional banking data, validates records, and standardises accepted data for downstream use.
 
-The repository includes CSV and JSON ingestion, record validation, transformations for all five datasets, an end-to-end command that writes processed and rejected CSV files, a command for loading processed data into PostgreSQL, PostgreSQL analytical views, and runtime logging.
+The repository includes CSV and JSON ingestion, record validation, transformations for all five datasets, an end-to-end command that writes processed and rejected CSV files, a command for loading processed data into PostgreSQL, PostgreSQL analytical views, scheduling, Docker support, and runtime logging.
 
-**Status:** Ingestion, validation, transformation, processed/rejected CSV output, optional PostgreSQL loading, analytical views, and runtime logging are implemented. The test suite passes, and the sample data has been loaded and verified in PostgreSQL.
+**Status:** Ingestion, validation, transformation, processed/rejected CSV output, optional PostgreSQL loading, analytical views, scheduling, containers, and runtime logging are implemented. The test suite passes, and the sample data has been loaded and verified in PostgreSQL.
 
 ## Project Objectives
 
@@ -20,7 +20,7 @@ The repository includes CSV and JSON ingestion, record validation, transformatio
 
 Banking data can arrive with missing identifiers, duplicate transactions, inconsistent dates, invalid amounts and references to accounts that do not exist.
 
-BankFlow will address these issues through explicit validation and transformation rules, helping prevent invalid records from entering trusted datasets.
+BankFlow addresses these issues through explicit validation and transformation rules, helping prevent invalid records from entering trusted datasets.
 
 ## Pipeline Status
 
@@ -43,12 +43,12 @@ Cleaning & Transformation (implemented)
  PostgreSQL loading (implemented)
         |
         v
-Optional Dashboard
+Optional reporting layer (planned)
 ```
 
 ## Data Sources
 
-All data used in this project will be fictional.
+All data used in this project is fictional.
 
 | File | Description |
 | --- | --- |
@@ -93,9 +93,9 @@ The analytical views answer questions such as:
 - Which branches process the highest transaction volumes?
 - How does customer growth change over time?
 - Where are customers located?
-- How many records are rejected, and what are the most common reasons?
-
-Optional rule-based anomaly flags may highlight unusually large transactions. These will demonstrate basic analytical rules, not real fraud detection.
+Rejected rows and their reasons are written to CSV files; they are not included
+in the PostgreSQL analytical views. Anomaly detection is not implemented. The
+large T011 deposit is valid sample data and must not be automatically rejected.
 
 Apply the analytics views after creating the database tables. The
 platform-specific commands are listed in the Windows and Linux setup sections
@@ -120,7 +120,7 @@ are kept in CSV files and are not included in these database summaries.
 
 ## Technology Stack
 
-| Area | Planned Technology |
+| Area | Technology |
 | --- | --- |
 | Programming | Python |
 | Data processing | Pandas |
@@ -130,7 +130,7 @@ are kept in CSV files and are not included in these database summaries.
 | Scheduling and orchestration | APScheduler daily cron job |
 | Containers | Docker |
 | Version control | Git and GitHub |
-| Optional reporting | Power BI, Metabase or a simple dashboard |
+| Optional reporting | Planned |
 
 ## Project Structure
 
@@ -146,7 +146,8 @@ BankFlow-data-pipeline/
 |   |-- processed/           # Generated accepted and transformed outputs
 |   `-- rejected/            # Generated rejected outputs with reasons
 |-- docs/
-|   `-- data_dictionary.md
+|   |-- data_dictionary.md    # Source fields, rules and fixture cases
+|   `-- operations.md         # Runtime configuration and troubleshooting
 |-- logs/                    # Generated runtime logs (ignored by Git)
 |-- sql/
 |   |-- schema.sql            # PostgreSQL tables and integrity constraints
@@ -190,13 +191,15 @@ BankFlow-data-pipeline/
 - [X] Add tests for ingestion, validation, transformation, and pipeline outputs.
 - [X] Add logging and stronger runtime error handling.
 - [X] Schedule the pipeline and containerise the application.
-- [ ] Add an optional reporting layer and complete documentation.
+- [X] Complete project documentation.
 
 ## Getting Started
 
 Inspect the five fictional source files in data/raw/ and the
 [data dictionary](docs/data_dictionary.md), which documents fields, relationships,
-normalisation cases and intentional invalid records. The fixtures contain 68 records.
+validation rules, normalisation cases and intentional invalid records. The
+[operations guide](docs/operations.md) covers configuration, scheduling, logging,
+outputs and troubleshooting. The fixtures contain 68 records.
 
 PostgreSQL is optional. The core pipeline and tests run without a database;
 they read data/raw/ and write CSVs to data/processed/ and data/rejected/.
@@ -470,7 +473,6 @@ python -m pytest -v
 
 The build creates a source archive and wheel in dist/.
 
-
 ## Planned Demonstration
 
 The planned demonstration will follow data through the full pipeline:
@@ -480,7 +482,7 @@ The planned demonstration will follow data through the full pipeline:
 3. Review rejected records and their rejection reasons.
 4. Inspect clean, related tables in PostgreSQL.
 5. Run analytical SQL queries.
-6. Present summaries or an optional dashboard.
+6. Present summaries, with an optional reporting layer as future work.
 
 ## Skills Demonstrated
 

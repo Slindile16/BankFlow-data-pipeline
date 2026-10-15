@@ -1,1 +1,1 @@
-"""BankFlow: fictional banking data pipeline (implementation pending)."""
+"""BankFlow: ETL pipeline for fictional banking data."""

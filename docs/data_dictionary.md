@@ -4,41 +4,72 @@ These small, hand-authored fixtures are for development and portfolio demonstrat
 All people, branches, payees and identifiers are fictional; there are no real account
 numbers or contact details. Raw files intentionally contain invalid records.
 
+For command usage, configuration, output behavior and troubleshooting, see the
+[operations guide](operations.md).
+
 ## File conventions
 
 - CSV files use UTF-8, comma delimiters and one header row. JSON is an array of objects.
 - IDs are strings. Empty CSV fields and JSON `null` represent missing values.
-- Money is in ZAR. Valid money values have two decimal places; parse with decimal
-  arithmetic in later implementation. JSON amounts are strings to preserve source precision.
-- Dates represent calendar dates without time zones. Accepted source formats will be
+- Money is in ZAR. Amounts and balances are parsed with decimal arithmetic and
+  values with more than two decimal places are rejected. JSON amounts are strings
+  to preserve source precision.
+- Dates represent calendar dates without time zones. Accepted source formats are
   `YYYY-MM-DD`, `DD/MM/YYYY` and `YYYY/MM/DD`, normalised to `YYYY-MM-DD`.
-- Trim surrounding whitespace and normalise known category/province variants before
-  checking allowed values. Do not silently correct impossible dates or unknown IDs.
+- The pipeline trims surrounding whitespace and accepts known category and
+  province variants. It rejects impossible dates, unknown IDs, and unsupported
+  categories rather than silently correcting them.
 - Balances are illustrative snapshots, not opening balances. These partial transaction
   histories cannot be reconciled to the account balances.
 - Transaction amounts must be positive; type describes the activity. Transfers are
   single activity records without a destination account, not double-entry ledger entries.
 - Payments are a separate source, with no promised correspondence to transactions.
-  Do not combine their amounts into transaction totals. Database mapping is still pending.
+  Do not combine their amounts into transaction totals. Payments load into their
+  own PostgreSQL table.
 
-## Fields and proposed fixture rules
+## Fields and enforced validation rules
 
-All fields below are required. These rules define the sample data's intended meaning;
-pipeline enforcement belongs to later roadmap steps.
+All fields below are required and must be nonblank. Invalid rows are retained in
+the rejected output with one or more reason codes in the rejection_reasons field.
+Validation keeps source values unchanged; accepted rows are trimmed and
+standardised in a separate transformation step.
+If a required column is missing from an input file, validation stops with a
+schema error instead of rejecting individual rows.
 
-| File | Fields | Meaning and rules |
+| File | Fields | Meaning and enforced rules |
 | --- | --- | --- |
-| branches.csv | branch_id, branch_name, city, province | Unique branch ID; nonblank name and city; South African province |
-| customers.csv | customer_id, first_name, last_name, province, join_date | Unique customer ID; nonblank names; province; valid join date |
-| accounts.csv | account_id, customer_id, branch_id, account_type, balance, opened_date | Unique account ID; references accepted customer and branch; savings/current type; decimal balance; valid opening date on or after customer join date |
-| transactions.csv | transaction_id, account_id, branch_id, transaction_type, amount, transaction_date | Unique transaction ID; references accepted account and branch; deposit/withdrawal/transfer/card_payment type; positive decimal amount; valid date on or after account opening |
-| payments.json | payment_id, account_id, payee, amount, payment_date, status | Unique payment ID; references accepted account; nonblank fictional payee; positive decimal amount; valid date on or after account opening; completed/pending/failed status |
+| branches.csv | branch_id, branch_name, city, province | Required values; province must be one of the nine South African provinces; exact duplicate rows are rejected |
+| customers.csv | customer_id, first_name, last_name, province, join_date | Required values; valid province and date; exact duplicate rows are rejected |
+| accounts.csv | account_id, customer_id, branch_id, account_type, balance, opened_date | Required values; references an accepted customer and branch; savings/current type; finite balance with at most two decimal places; valid opening date on or after the customer's join date; exact duplicate rows are rejected |
+| transactions.csv | transaction_id, account_id, branch_id, transaction_type, amount, transaction_date | Required values; references an accepted account and branch; deposit/withdrawal/transfer/card_payment type; positive finite amount with at most two decimal places; valid date on or after account opening; exact duplicate rows are rejected |
+| payments.json | payment_id, account_id, payee, amount, payment_date, status | Required values; references an accepted account; positive finite amount with at most two decimal places; valid date on or after account opening; completed/pending/failed status; exact duplicate rows are rejected |
 
-Province names use the nine South African provinces. `KZN` maps to `KwaZulu-Natal`;
-province casing and whitespace can be normalised. `CARD PAYMENT` maps to
-`card_payment`; account types, transaction types and payment statuses are case-insensitive.
-For these fixtures, retain the first occurrence of an exact duplicate and reject
-subsequent occurrences. Conflicting records with the same ID will need a separate policy.
+Exact duplicates are compared across every field in the dataset, and the first
+occurrence is accepted while subsequent copies are rejected. The validator does
+not currently reject two different records that share the same ID. The loader
+upserts by primary key, so a later record with that ID can overwrite the earlier
+one. Inspect and resolve conflicting IDs before loading.
+
+Province names use the nine South African provinces. `KZN` maps to
+`KwaZulu-Natal`; province casing and repeated/outer whitespace are normalised.
+`CARD PAYMENT` maps to `card_payment`; account types, transaction types and
+payment statuses are case-insensitive. Dates in the accepted source formats are
+written as `YYYY-MM-DD`. Monetary values are standardised to decimal values, and
+text fields are trimmed.
+
+## Rejection reason codes
+
+Each rejected row can have multiple reason codes. Missing-value codes use the
+`missing_<field>` form, where `<field>` is the name of the missing column.
+Other codes are:
+
+| Dataset | Additional reason codes |
+| --- | --- |
+| Branches | `invalid_province`, `duplicate_branch` |
+| Customers | `invalid_province`, `invalid_join_date`, `duplicate_customer` |
+| Accounts | `unknown_customer_id`, `unknown_branch_id`, `invalid_account_type`, `invalid_balance`, `invalid_opened_date`, `opened_date_before_customer_join_date`, `duplicate_account` |
+| Transactions | `unknown_account_id`, `unknown_branch_id`, `invalid_transaction_type`, `invalid_amount`, `nonpositive_amount`, `invalid_transaction_date`, `transaction_date_before_account_opened_date`, `duplicate_transaction` |
+| Payments | `unknown_account_id`, `invalid_status`, `invalid_amount`, `nonpositive_amount`, `invalid_payment_date`, `payment_date_before_account_opened_date`, `duplicate_payment` |
 
 ## Intentional quality cases
 
@@ -52,7 +83,7 @@ Record positions below are one-based, excluding CSV headers.
 | transactions.csv | 22 | Positions 6-7 need normalisation; 13 duplicates T003; 14 references A999; 15 references B999; 16 has a negative amount; 17 has zero amount; 18 has a nonnumeric amount; 19 has an impossible date; 20 has no ID; 21 has unsupported refund type; 22 has no account ID |
 | payments.json | 11 | Positions 4-5 need normalisation; 6 duplicates P002; 7 references A999; 8 has a null ID; 9 has a nonnumeric amount; 10 has an impossible date; 11 has unknown status |
 
-Under these proposed rules, expected accepted/rejected counts are: branches 5/0,
+Under these rules, expected accepted/rejected counts are: branches 5/0,
 customers 10/4, accounts 10/6, transactions 12/10, and payments 5/6.
 That is 68 source records: 42 accepted after normalisation and 26 rejected.
 The large T011 deposit is valid; any later anomaly flag must not automatically reject it.
