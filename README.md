@@ -97,11 +97,9 @@ The analytical views answer questions such as:
 
 Optional rule-based anomaly flags may highlight unusually large transactions. These will demonstrate basic analytical rules, not real fraud detection.
 
-Apply the analytics views after creating the database tables:
-
-```powershell
-& "$pgBin\psql.exe" -U postgres -d bankflow -f ".\sql\analytics.sql"
-```
+Apply the analytics views after creating the database tables. The
+platform-specific commands are listed in the Windows and Linux setup sections
+under Getting Started.
 
 The script can be applied again safely. It creates or replaces these views:
 
@@ -113,11 +111,8 @@ The script can be applied again safely. It creates or replaces these views:
 | `customer_province_summary` | Customer counts and percentage by province |
 | `monthly_payment_summary` | Payment counts and amounts by month and status |
 
-For example, query a summary with:
-
-```powershell
-& "$pgBin\psql.exe" -U postgres -d bankflow -c "SELECT * FROM daily_transaction_summary ORDER BY transaction_date, transaction_type;"
-```
+For example, query a summary with the platform-specific commands in the
+Getting Started section.
 
 These are views rather than stored summary tables, so they stay in sync with the
 underlying tables whenever the loader adds or updates records. Rejected records
@@ -199,225 +194,282 @@ BankFlow-data-pipeline/
 
 ## Getting Started
 
-Inspect the five fictional source files in `data/raw/` and the
+Inspect the five fictional source files in data/raw/ and the
 [data dictionary](docs/data_dictionary.md), which documents fields, relationships,
 normalisation cases and intentional invalid records. The fixtures contain 68 records.
 
-PostgreSQL is optional. The core pipeline and tests run without installing or
-starting a database; they read the fictional files in `data/raw/` and write CSVs
-to `data/processed/` and `data/rejected/`. Follow steps 2–5 only if you want to
-store the processed data in PostgreSQL. BankFlow does not require users to turn
-off Windows security settings.
+PostgreSQL is optional. The core pipeline and tests run without a database;
+they read data/raw/ and write CSVs to data/processed/ and data/rejected/.
+Use the platform-specific PostgreSQL steps only if you want to store processed
+data in PostgreSQL.
 
-### 1. Create the Python environment
+## Windows (PowerShell)
 
-Run these commands from the repository root in PowerShell:
+#### 1. Create the Python environment
 
-```powershell
+Run from the project root:
+
+~~~powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
-```
+~~~
 
-The project requires Python 3.12 or newer. The `dev` extra installs pytest.
-If PowerShell blocks the activation script, skip activation and use
-`.\.venv\Scripts\python.exe` instead of `python` for the commands below.
+The project requires Python 3.12 or newer. If PowerShell blocks activation,
+run commands with .\.venv\Scripts\python.exe instead of python.
 
-### Core CSV pipeline (no database required)
+#### 2. Configure the schedule (optional)
 
-Run the pipeline and test suite without installing PostgreSQL:
+Set another daily run time before starting Docker Compose:
 
-```powershell
-python -m bankflow.pipeline
-python -m pytest -v
-```
-
-The pipeline writes processed and rejected CSV files. Creating and querying
-PostgreSQL tables requires access to a PostgreSQL server, either local or hosted.
-
-### Run the scheduled container
-
-Docker Compose builds the image and keeps the scheduler running. It runs the
-pipeline daily at 02:00 UTC; source data is mounted read-only, while processed
-files, rejected files and logs persist in the project folders.
-
-Build the image and start the scheduler in the background:
-
-```powershell
-docker compose up --build -d
-```
-
-Check that the service is running and follow its logs:
-
-```powershell
-docker compose ps
-docker compose logs -f bankflow
-```
-
-Run the pipeline immediately in a one-off container:
-
-```powershell
-docker compose run --rm bankflow python -m bankflow.pipeline
-```
-
-Stop and remove the scheduler container:
-
-```powershell
-docker compose down
-```
-
-To set another daily run time, define these variables in PowerShell before
-starting Compose:
-
-```powershell
+~~~powershell
 $env:BANKFLOW_SCHEDULE_HOUR = "3"
 $env:BANKFLOW_SCHEDULE_MINUTE = "30"
 $env:BANKFLOW_SCHEDULE_TIMEZONE = "Africa/Johannesburg"
 docker compose up --build -d
-```
+~~~
 
-The image runs the core CSV pipeline and does not start or connect to PostgreSQL.
-For a one-off local run without Docker, `python -m bankflow.pipeline` remains
-available. To run the scheduler locally, use `python -m bankflow.scheduler`.
+#### 3. Optional: install and start PostgreSQL
 
-### Logging
-
-Run the pipeline to see the accepted and rejected counts for each dataset in
-the console and save them to `logs/bankflow.log`:
-
-```powershell
-python -m bankflow.pipeline
-```
-
-The pipeline and database loader write INFO and higher messages to the console
-and log file. Each pipeline run adds file-loading messages and accepted/rejected
-counts. The log file rotates after reaching 1 MB, keeping up to three older
-files. Log files are generated locally and ignored by Git. When an ingestion,
-pipeline, or database load operation fails, BankFlow logs the error with its
-traceback and re-raises the original exception.
-
-### 2. Optional: Install and start PostgreSQL on Windows
-
-Download the Windows x86-64 interactive installer from the
+Download the Windows x86-64 installer from the
 [official PostgreSQL Windows page](https://www.postgresql.org/download/windows/).
-Keep PostgreSQL Server, Command Line Tools, and pgAdmin selected. The commands
-below assume PostgreSQL 18 was installed in its default location. If your
-installed version differs, update `18` in `$pgBin`, `$pgData`, and the service
-name in the commands.
+The commands below assume PostgreSQL 18 is installed in its default location.
+If your version differs, update 18 in the paths and service name.
 
-```powershell
+~~~powershell
 $pgBin = "C:\Program Files\PostgreSQL\18\bin"
 $pgData = "C:\Program Files\PostgreSQL\18\data"
 Get-Service -Name postgresql-x64-18
-```
+~~~
 
-If the service is stopped, open PowerShell as administrator (Start, search for
-PowerShell, right-click it, and select **Run as administrator**) and start it:
+If the service is stopped, open PowerShell as administrator and start it:
 
-```powershell
+~~~powershell
 Start-Service -Name postgresql-x64-18
 Get-Service -Name postgresql-x64-18
-```
+~~~
 
-The service status should show `Running`. If the installer initialized the data
-directory but did not register the service, register it once from administrator
-PowerShell, then start it:
+If the installer initialized the data directory but did not register the
+service, register it once from administrator PowerShell, then start it:
 
-```powershell
+~~~powershell
 & "$pgBin\pg_ctl.exe" register -N "postgresql-x64-18" -U "NT AUTHORITY\NetworkService" -D $pgData -w
 Start-Service -Name postgresql-x64-18
-```
+~~~
 
-If Windows blocks `pg_ctl.exe` with an application-control policy message, keep
-your security settings on and skip the local database setup unless you choose a
-trusted, approved way to run PostgreSQL. You can still run the BankFlow pipeline
-and tests without a database.
+If Windows blocks pg_ctl.exe with an application-control policy message, keep
+your security settings on and skip local database setup unless you choose a
+trusted, approved way to run PostgreSQL. The pipeline and tests work without a
+database.
 
-### 3. Create the database and tables
+#### 4. Create the database and tables
 
-From the repository root, create the `bankflow` database once. If it already
-exists, skip this command. Enter the PostgreSQL `postgres` user's password when
-prompted:
+Create the bankflow database once; skip this if it already exists:
 
-```powershell
+~~~powershell
 & "$pgBin\createdb.exe" -U postgres bankflow
-```
+~~~
 
-Apply the schema. It creates the five tables and their keys and constraints:
+Apply the table schema and check that the tables exist:
 
-```powershell
+~~~powershell
 & "$pgBin\psql.exe" -U postgres -d bankflow -f ".\sql\schema.sql"
-```
-
-Check that the tables exist:
-
-```powershell
 & "$pgBin\psql.exe" -U postgres -d bankflow -c "\dt"
-```
+~~~
 
-### 4. Process and optionally load the data
+Apply or update the analytical views:
 
-Generate accepted, transformed CSVs and rejected CSVs with rejection reasons:
+~~~powershell
+& "$pgBin\psql.exe" -U postgres -d bankflow -f ".\sql\analytics.sql"
+& "$pgBin\psql.exe" -U postgres -d bankflow -c "SELECT * FROM daily_transaction_summary ORDER BY transaction_date, transaction_type;"
+~~~
 
-```powershell
-python -m bankflow.pipeline
-```
+#### 5. Load and verify the data
 
-Load the accepted, transformed CSVs into PostgreSQL. The loader prompts for the
-password without displaying it. It loads parent tables before dependent tables
-in one transaction; rerunning it updates rows with matching IDs.
+Install the database extra, generate the CSV files, then load them into
+PostgreSQL. The loader prompts for the password without displaying it. It loads
+parent tables before dependent tables in one transaction; rerunning it updates
+rows with matching IDs.
 
-```powershell
+~~~powershell
 python -m pip install -e ".[dev,database]"
+python -m bankflow.pipeline
 python -m bankflow.database_loader
-```
+~~~
 
-The default connection is `localhost:5432`, database `bankflow`, user `postgres`.
-Override the connection settings in the current PowerShell session if needed:
+The default connection is localhost:5432, database bankflow, user postgres.
+Override the connection in the current PowerShell session if needed:
 
-```powershell
+~~~powershell
 $env:BANKFLOW_DB_HOST = "localhost"
 $env:BANKFLOW_DB_PORT = "5432"
 $env:BANKFLOW_DB_NAME = "bankflow"
 $env:BANKFLOW_DB_USER = "postgres"
-```
-
-### 5. Verify the database rows
-
-List the tables:
-
-```powershell
-& "$pgBin\psql.exe" -U postgres -d bankflow -c "\dt"
-```
+~~~
 
 Check the accepted sample-record counts:
 
-```powershell
+~~~powershell
 & "$pgBin\psql.exe" -U postgres -d bankflow -c "SELECT 'branches' AS dataset, COUNT(*) FROM branches UNION ALL SELECT 'customers', COUNT(*) FROM customers UNION ALL SELECT 'accounts', COUNT(*) FROM accounts UNION ALL SELECT 'transactions', COUNT(*) FROM transactions UNION ALL SELECT 'payments', COUNT(*) FROM payments;"
-```
+~~~
 
 Expected counts are 5 branches, 10 customers, 10 accounts, 12 transactions,
-and 5 payments. Rejected records remain in `data/rejected/`; the loader imports
-only accepted data from `data/processed/`.
+and 5 payments. Rejected records remain in data/rejected/; the loader imports
+only accepted data from data/processed/.
 
-## Running Tests
+## Linux (Bash)
 
-From the project root, with your virtual environment active and development
-dependencies installed, run the full test suite:
+#### 1. Create the Python environment
 
-```powershell
+Run from the repository root:
+
+~~~bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+~~~
+
+The project requires Python 3.12 or newer. If you do not activate the
+environment, use ./.venv/bin/python instead of python.
+
+#### 2. Configure the schedule (optional)
+
+Set another daily run time before starting Docker Compose:
+
+~~~bash
+export BANKFLOW_SCHEDULE_HOUR=3
+export BANKFLOW_SCHEDULE_MINUTE=30
+export BANKFLOW_SCHEDULE_TIMEZONE=Africa/Johannesburg
+docker compose up --build -d
+~~~
+
+#### 3. Optional: install and start PostgreSQL
+
+For Ubuntu or Debian, install PostgreSQL and its command-line tools, then start
+the service:
+
+~~~bash
+sudo apt update
+sudo apt install postgresql postgresql-client
+sudo systemctl enable --now postgresql
+sudo systemctl status postgresql
+~~~
+
+For other Linux distributions, install and start PostgreSQL using the
+distribution's package manager and service manager.
+
+Set a password for the postgres database user by opening its interactive prompt:
+
+~~~bash
+sudo -u postgres psql
+~~~
+
+At the psql prompt, run \password postgres and follow the prompts.
+
+#### 4. Create the database and tables
+
+Create the bankflow database once:
+
+~~~bash
+sudo -u postgres createdb bankflow
+~~~
+
+Apply the schema and check that the tables exist:
+
+~~~bash
+sudo -u postgres psql -d bankflow -f sql/schema.sql
+sudo -u postgres psql -d bankflow -c "\dt"
+~~~
+
+Apply or update the analytical views:
+
+~~~bash
+sudo -u postgres psql -d bankflow -f sql/analytics.sql
+sudo -u postgres psql -d bankflow -c "SELECT * FROM daily_transaction_summary ORDER BY transaction_date, transaction_type;"
+~~~
+
+#### 5. Load and verify the data
+
+Install the database extra, generate the CSV files, then load them into
+PostgreSQL. The loader prompts for the password without displaying it.
+
+~~~bash
+python -m pip install -e ".[dev,database]"
+python -m bankflow.pipeline
+python -m bankflow.database_loader
+~~~
+
+The default connection is localhost:5432, database bankflow, user postgres.
+Set or override the connection variables in the current Bash session if needed:
+
+~~~bash
+export BANKFLOW_DB_HOST=localhost
+export BANKFLOW_DB_PORT=5432
+export BANKFLOW_DB_NAME=bankflow
+export BANKFLOW_DB_USER=postgres
+~~~
+
+Check the accepted sample-record counts:
+
+~~~bash
+psql -U postgres -d bankflow -c "SELECT 'branches' AS dataset, COUNT(*) FROM branches UNION ALL SELECT 'customers', COUNT(*) FROM customers UNION ALL SELECT 'accounts', COUNT(*) FROM accounts UNION ALL SELECT 'transactions', COUNT(*) FROM transactions UNION ALL SELECT 'payments', COUNT(*) FROM payments;"
+~~~
+
+Expected counts are 5 branches, 10 customers, 10 accounts, 12 transactions,
+and 5 payments. Rejected records remain in data/rejected/; the loader imports
+only accepted data from data/processed/.
+
+tests/conftest.py creates a fresh temporary folder for each test run and cleans
+it up afterward. Pytest caching is disabled in pyproject.toml to avoid shared
+folder permission issues encountered on Windows.
+
+## Commands shared by Windows and Linux
+
+After completing the platform-specific setup above and activating the project
+environment, these commands work in either PowerShell or Bash.
+
+Run the CSV pipeline once:
+
+~~~sh
+python -m bankflow.pipeline
+~~~
+
+Start the local daily scheduler (default: 02:00 UTC):
+
+~~~sh
+python -m bankflow.scheduler
+~~~
+
+Build and start the scheduled Docker service:
+
+~~~sh
+docker compose up --build -d
+docker compose ps
+docker compose logs -f bankflow
+~~~
+
+Run the pipeline immediately in a one-off container, then stop the scheduler:
+
+~~~sh
+docker compose run --rm bankflow python -m bankflow.pipeline
+docker compose down
+~~~
+
+The container persists processed files, rejected files, and logs in the project
+folders. It runs the CSV pipeline and does not connect to PostgreSQL. The
+scheduler waits for its next scheduled time after startup.
+
+Run the same compile, packaging, and test checks used in CI:
+
+~~~sh
+python -m compileall -q src
+python -m pip install build
+python -m build
 python -m pytest -v
-```
+~~~
 
-If the virtual environment is not active, use its Python executable explicitly:
+The build creates a source archive and wheel in dist/.
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -v
-```
-
-`tests/conftest.py` creates a fresh temporary folder for each test run and cleans
-it up afterward. Pytest caching is disabled in `pyproject.toml` to avoid the
-shared-folder permission issues encountered on Windows.
 
 ## Planned Demonstration
 
