@@ -1,0 +1,16 @@
+services:
+  bankflow:
+    build: .
+    command: ["python", "-m", "bankflow.scheduler"]
+    restart: unless-stopped
+    environment:
+      BANKFLOW_DATA_ROOT: /app/data
+      BANKFLOW_LOG_FILE: /app/logs/bankflow.log
+      BANKFLOW_SCHEDULE_HOUR: "${BANKFLOW_SCHEDULE_HOUR:-2}"
+      BANKFLOW_SCHEDULE_MINUTE: "${BANKFLOW_SCHEDULE_MINUTE:-0}"
+      BANKFLOW_SCHEDULE_TIMEZONE: "${BANKFLOW_SCHEDULE_TIMEZONE:-UTC}"
+    volumes:
+      - ./data/raw:/app/data/raw:ro
+      - ./data/processed:/app/data/processed
+      - ./data/rejected:/app/data/rejected
+      - ./logs:/app/logs
