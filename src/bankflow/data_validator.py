@@ -72,14 +72,20 @@ class DataValidator:
             if parsed.strftime(date_format) == value:
                 return parsed.date()
         return None
-
+    
     @staticmethod
     def _is_valid_balance(value):
         try:
             amount = Decimal(str(value).strip())
         except (InvalidOperation, ValueError, AttributeError):
             return False
-        return amount.is_finite() and amount.as_tuple().exponent >= -2
+
+        if not amount.is_finite():
+            return False
+
+        exponent = int(amount.as_tuple().exponent)
+        return exponent >= -2
+
 
     @staticmethod
     def _account_open_dates(accepted_accounts):
