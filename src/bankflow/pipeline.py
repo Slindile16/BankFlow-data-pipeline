@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from pathlib import Path
 
 from bankflow.data_ingestor import DataIngestor
@@ -108,12 +109,14 @@ class DataPipeline:
 
 def main():
     """Run the pipeline using the repository's standard data folders."""
-    configure_logging()
-    project_root = Path(__file__).resolve().parents[2]
+    log_file = os.getenv("BANKFLOW_LOG_FILE")
+    configure_logging(log_file=log_file)
+    default_data_root = Path(__file__).resolve().parents[2] / "data"
+    project_root = Path(os.getenv("BANKFLOW_DATA_ROOT", str(default_data_root)))
     pipeline = DataPipeline(
-        raw_data_folder=project_root / "data" / "raw",
-        processed_data_folder=project_root / "data" / "processed",
-        rejected_data_folder=project_root / "data" / "rejected",
+        raw_data_folder=project_root / "raw",
+        processed_data_folder=project_root / "processed",
+        rejected_data_folder=project_root / "rejected",
     )
     pipeline.run()
 
