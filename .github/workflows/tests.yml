@@ -29,8 +29,14 @@ jobs:
       - name: Install project and test dependencies
         run: python -m pip install -e ".[dev]"
 
+      - name: Compile source files
+        run: python -m compileall -q src
+
+      - name: Install packaging tools
+        run: python -m pip install build
+
+      - name: Build source and wheel distributions
+        run: python -m build
+
       - name: Run tests
         run: python -m pytest -v
-
-
-      #Use python3 if you are on a Linux or macOS runner, and python if you are on a Windows runner.
