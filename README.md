@@ -132,7 +132,7 @@ are kept in CSV files and are not included in these database summaries.
 | Database | PostgreSQL |
 | Analytics | SQL |
 | Testing | pytest |
-| Scheduling and orchestration | Apache Airflow — later stage |
+| Scheduling and orchestration | APScheduler daily cron job |
 | Containers | Docker |
 | Version control | Git and GitHub |
 | Optional reporting | Power BI, Metabase or a simple dashboard |
@@ -164,6 +164,7 @@ BankFlow-data-pipeline/
 |       |-- data_validator.py # Validation and rejection reasons
 |       |-- data_transformer.py # Standardisation of accepted records
 |       |-- database_loader.py # Load processed CSVs into PostgreSQL
+|       |-- scheduler.py       # Daily scheduled pipeline runner
 |       `-- pipeline.py       # End-to-end run and CSV output writing
 |-- tests/
 |   |-- conftest.py
@@ -173,6 +174,9 @@ BankFlow-data-pipeline/
 |   |-- test_pipeline.py
 |   `-- test_database_loader.py
 |-- .gitignore
+|-- .dockerignore
+|-- Dockerfile
+|-- compose.yaml
 |-- pyproject.toml           # Dependencies, packaging and pytest configuration
 `-- README.md
 ```
@@ -190,7 +194,7 @@ BankFlow-data-pipeline/
 - [X] Create analytical SQL queries and summary views.
 - [X] Add tests for ingestion, validation, transformation, and pipeline outputs.
 - [X] Add logging and stronger runtime error handling.
-- [ ] Schedule the pipeline and containerise the application.
+- [X] Schedule the pipeline and containerise the application.
 - [ ] Add an optional reporting layer and complete documentation.
 
 ## Getting Started
@@ -230,6 +234,51 @@ python -m pytest -v
 
 The pipeline writes processed and rejected CSV files. Creating and querying
 PostgreSQL tables requires access to a PostgreSQL server, either local or hosted.
+
+### Run the scheduled container
+
+Docker Compose builds the image and keeps the scheduler running. It runs the
+pipeline daily at 02:00 UTC; source data is mounted read-only, while processed
+files, rejected files and logs persist in the project folders.
+
+Build the image and start the scheduler in the background:
+
+```powershell
+docker compose up --build -d
+```
+
+Check that the service is running and follow its logs:
+
+```powershell
+docker compose ps
+docker compose logs -f bankflow
+```
+
+Run the pipeline immediately in a one-off container:
+
+```powershell
+docker compose run --rm bankflow python -m bankflow.pipeline
+```
+
+Stop and remove the scheduler container:
+
+```powershell
+docker compose down
+```
+
+To set another daily run time, define these variables in PowerShell before
+starting Compose:
+
+```powershell
+$env:BANKFLOW_SCHEDULE_HOUR = "3"
+$env:BANKFLOW_SCHEDULE_MINUTE = "30"
+$env:BANKFLOW_SCHEDULE_TIMEZONE = "Africa/Johannesburg"
+docker compose up --build -d
+```
+
+The image runs the core CSV pipeline and does not start or connect to PostgreSQL.
+For a one-off local run without Docker, `python -m bankflow.pipeline` remains
+available. To run the scheduler locally, use `python -m bankflow.scheduler`.
 
 ### Logging
 
