@@ -15,7 +15,11 @@ class DataIngestor:
     def read_csv(self, filename):
         file_path = self.raw_data_folder / filename
         try:
-            data = pd.read_csv(file_path)
+            # Keep IDs and money as source text so pandas cannot remove leading
+            # zeroes from IDs or round decimal values before validation.
+            data = pd.read_csv(
+                file_path, dtype=str, keep_default_na=False, na_values=[""]
+            )
         except Exception:
             logger.exception("Failed to read CSV file %s", file_path)
             raise

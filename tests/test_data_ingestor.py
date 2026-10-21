@@ -32,6 +32,18 @@ def test_read_csv_loads_columns_and_records(tmp_path):
     pd.testing.assert_frame_equal(result, expected, check_dtype=False)
 
 
+def test_read_csv_preserves_numeric_ids_and_money_precision(tmp_path):
+    source = tmp_path / "records.csv"
+    source.write_text(
+        "account_id,amount\n000123,1.2300\n", encoding="utf-8"
+    )
+
+    result = DataIngestor(tmp_path).read_csv(source.name)
+
+    assert result.loc[0, "account_id"] == "000123"
+    assert result.loc[0, "amount"] == "1.2300"
+
+
 def test_read_csv_logs_filename_and_row_count(tmp_path, caplog):
     (tmp_path / "customers.csv").write_text(
         "customer_id\nC001\nC002\n", encoding="utf-8"

@@ -4,7 +4,7 @@ This guide describes how the implemented pipeline runs, where it writes files,
 how to configure the scheduler and database loader, and how to diagnose common
 problems. For field definitions, validation rules and the intentional fixture
 errors, see the [data dictionary](data_dictionary.md). For installation and
-platform-specific commands, see the [README](../README.md).
+platform-specific commands, see the [setup guide](setup.md).
 
 ## Pipeline behavior
 
@@ -97,14 +97,12 @@ to the caller. Log files are runtime output and are ignored by Git.
 | PostgreSQL connection is refused | Confirm the PostgreSQL service is running and check the host, port, database, and user settings. The loader prompts for the password. |
 | The loader reports missing processed files | Run the pipeline first and confirm all five CSV files are in `data/processed/`. |
 | An analytical view is missing | Apply `sql/schema.sql`, load the processed data, then apply `sql/analytics.sql`. |
-| Database loading fails on a duplicate key | Inspect the source rows with the same ID. Exact repeated rows are filtered; different rows with the same ID are upserted in file order, so the later row can replace earlier values. |
+| Rows are rejected for a conflicting ID | Review every source row with that ID, resolve the differences, then rerun the pipeline before loading. |
 
 ## Current limitations
 
 - Rejected records stay in CSV files and are not included in PostgreSQL summary
   views.
-- Duplicate validation detects exact duplicate rows. It does not report
-  conflicting rows that share an ID; inspect IDs before loading.
 - Transactions are sample activity records rather than double-entry ledger
   entries. Transfers do not identify a destination account.
 - The sample data and summary rules are educational examples, not banking

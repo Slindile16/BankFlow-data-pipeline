@@ -11,9 +11,11 @@ For command usage, configuration, output behavior and troubleshooting, see the
 
 - CSV files use UTF-8, comma delimiters and one header row. JSON is an array of objects.
 - IDs are strings. Empty CSV fields and JSON `null` represent missing values.
-- Money is in ZAR. Amounts and balances are parsed with decimal arithmetic and
-  values with more than two decimal places are rejected. JSON amounts are strings
-  to preserve source precision.
+- Money is in ZAR. CSV fields are read as text so IDs keep leading zeroes and
+  decimal values keep their original precision. Amounts and balances are parsed
+  with decimal arithmetic; values with more than two decimal places or outside
+  PostgreSQL `NUMERIC(12, 2)` range are rejected. JSON amounts are strings to
+  preserve source precision.
 - Dates represent calendar dates without time zones. Accepted source formats are
   `YYYY-MM-DD`, `DD/MM/YYYY` and `YYYY/MM/DD`, normalised to `YYYY-MM-DD`.
 - The pipeline trims surrounding whitespace and accepts known category and
@@ -40,15 +42,15 @@ schema error instead of rejecting individual rows.
 | --- | --- | --- |
 | branches.csv | branch_id, branch_name, city, province | Required values; province must be one of the nine South African provinces; exact duplicate rows are rejected |
 | customers.csv | customer_id, first_name, last_name, province, join_date | Required values; valid province and date; exact duplicate rows are rejected |
-| accounts.csv | account_id, customer_id, branch_id, account_type, balance, opened_date | Required values; references an accepted customer and branch; savings/current type; finite balance with at most two decimal places; valid opening date on or after the customer's join date; exact duplicate rows are rejected |
-| transactions.csv | transaction_id, account_id, branch_id, transaction_type, amount, transaction_date | Required values; references an accepted account and branch; deposit/withdrawal/transfer/card_payment type; positive finite amount with at most two decimal places; valid date on or after account opening; exact duplicate rows are rejected |
-| payments.json | payment_id, account_id, payee, amount, payment_date, status | Required values; references an accepted account; positive finite amount with at most two decimal places; valid date on or after account opening; completed/pending/failed status; exact duplicate rows are rejected |
+| accounts.csv | account_id, customer_id, branch_id, account_type, balance, opened_date | Required values; references an accepted customer and branch; savings/current type; finite balance with at most two decimal places and absolute value no greater than 9,999,999,999.99; valid opening date on or after the customer's join date; exact duplicate rows are rejected |
+| transactions.csv | transaction_id, account_id, branch_id, transaction_type, amount, transaction_date | Required values; references an accepted account and branch; deposit/withdrawal/transfer/card_payment type; positive finite amount no greater than 9,999,999,999.99 with at most two decimal places; valid date on or after account opening; exact duplicate rows are rejected |
+| payments.json | payment_id, account_id, payee, amount, payment_date, status | Required values; references an accepted account; positive finite amount no greater than 9,999,999,999.99 with at most two decimal places; valid date on or after account opening; completed/pending/failed status; exact duplicate rows are rejected |
 
 Exact duplicates are compared across every field in the dataset, and the first
-occurrence is accepted while subsequent copies are rejected. The validator does
-not currently reject two different records that share the same ID. The loader
-upserts by primary key, so a later record with that ID can overwrite the earlier
-one. Inspect and resolve conflicting IDs before loading.
+occurrence is accepted while subsequent copies are rejected. If a nonblank ID
+appears on different records, every record with that ID is rejected with a
+`conflicting_<dataset>_id` reason. This prevents the database loader's primary-key
+upsert from silently choosing one version.
 
 Province names use the nine South African provinces. `KZN` maps to
 `KwaZulu-Natal`; province casing and repeated/outer whitespace are normalised.
@@ -65,11 +67,11 @@ Other codes are:
 
 | Dataset | Additional reason codes |
 | --- | --- |
-| Branches | `invalid_province`, `duplicate_branch` |
-| Customers | `invalid_province`, `invalid_join_date`, `duplicate_customer` |
-| Accounts | `unknown_customer_id`, `unknown_branch_id`, `invalid_account_type`, `invalid_balance`, `invalid_opened_date`, `opened_date_before_customer_join_date`, `duplicate_account` |
-| Transactions | `unknown_account_id`, `unknown_branch_id`, `invalid_transaction_type`, `invalid_amount`, `nonpositive_amount`, `invalid_transaction_date`, `transaction_date_before_account_opened_date`, `duplicate_transaction` |
-| Payments | `unknown_account_id`, `invalid_status`, `invalid_amount`, `nonpositive_amount`, `invalid_payment_date`, `payment_date_before_account_opened_date`, `duplicate_payment` |
+| Branches | `invalid_province`, `duplicate_branch`, `conflicting_branch_id` |
+| Customers | `invalid_province`, `invalid_join_date`, `duplicate_customer`, `conflicting_customer_id` |
+| Accounts | `unknown_customer_id`, `unknown_branch_id`, `invalid_account_type`, `invalid_balance`, `invalid_opened_date`, `opened_date_before_customer_join_date`, `duplicate_account`, `conflicting_account_id` |
+| Transactions | `unknown_account_id`, `unknown_branch_id`, `invalid_transaction_type`, `invalid_amount`, `nonpositive_amount`, `invalid_transaction_date`, `transaction_date_before_account_opened_date`, `duplicate_transaction`, `conflicting_transaction_id` |
+| Payments | `unknown_account_id`, `invalid_status`, `invalid_amount`, `nonpositive_amount`, `invalid_payment_date`, `payment_date_before_account_opened_date`, `duplicate_payment`, `conflicting_payment_id` |
 
 ## Intentional quality cases
 

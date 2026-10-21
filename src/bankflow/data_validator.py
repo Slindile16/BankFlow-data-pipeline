@@ -6,6 +6,9 @@ from decimal import Decimal, InvalidOperation
 import pandas as pd
 
 
+MAX_NUMERIC_12_2 = Decimal("9999999999.99")
+
+
 class DataValidator:
     """Separate accepted records from records with validation issues."""
 
@@ -84,7 +87,24 @@ class DataValidator:
             return False
 
         exponent = int(amount.as_tuple().exponent)
-        return exponent >= -2
+        return exponent >= -2 and abs(amount) <= MAX_NUMERIC_12_2
+
+    @staticmethod
+    def _conflicting_ids(frame, id_column, compared_columns):
+        """Return a positional mask for nonblank IDs with different records."""
+        conflicts = [False] * len(frame)
+        for positions in frame.groupby(id_column, dropna=True, sort=False).indices.values():
+            positions = list(positions)
+            if not positions:
+                continue
+            identifier = frame.iloc[positions[0]][id_column]
+            if DataValidator._is_missing(identifier):
+                continue
+            group = frame.iloc[positions]
+            if len(group.drop_duplicates(subset=list(compared_columns))) > 1:
+                for position in positions:
+                    conflicts[position] = True
+        return conflicts
 
 
     @staticmethod
@@ -125,6 +145,9 @@ class DataValidator:
             raise ValueError("Input must not contain the reserved rejection_reasons column")
 
         duplicates = branches.duplicated(subset=list(self.BRANCH_COLUMNS), keep="first")
+        conflicts = self._conflicting_ids(
+            branches, "branch_id", self.BRANCH_COLUMNS
+        )
         all_reasons = []
         for position, (_, row) in enumerate(branches.iterrows()):
             reasons = []
@@ -138,6 +161,8 @@ class DataValidator:
 
             if duplicates.iloc[position]:
                 reasons.append("duplicate_branch")
+            if conflicts[position]:
+                reasons.append("conflicting_branch_id")
             all_reasons.append(reasons)
 
         accepted_positions = [i for i, reasons in enumerate(all_reasons) if not reasons]
@@ -150,9 +175,8 @@ class DataValidator:
     def validate_customers(self, customers):
         """Return (accepted, rejected), retaining source columns and indices.
 
-        Check required IDs/names, provinces, join dates and exact duplicates.
+        Check required fields, dates, duplicates, and conflicting customer IDs.
         Each rejected row receives reason codes in ``rejection_reasons``.
-        Conflicting records sharing an ID are not covered yet.
         """
         missing_columns = set(self.CUSTOMER_COLUMNS) - set(customers.columns)
         if missing_columns:
@@ -161,6 +185,9 @@ class DataValidator:
             raise ValueError("Input must not contain the reserved rejection_reasons column")
 
         duplicates = customers.duplicated(subset=list(self.CUSTOMER_COLUMNS), keep="first")
+        conflicts = self._conflicting_ids(
+            customers, "customer_id", self.CUSTOMER_COLUMNS
+        )
         all_reasons = []
         for position, (_, row) in enumerate(customers.iterrows()):
             reasons = []
@@ -176,6 +203,8 @@ class DataValidator:
                 reasons.append("invalid_join_date")
             if duplicates.iloc[position]:
                 reasons.append("duplicate_customer")
+            if conflicts[position]:
+                reasons.append("conflicting_customer_id")
             all_reasons.append(reasons)
 
         # Select by position so repeated input index labels remain independent.
@@ -217,6 +246,7 @@ class DataValidator:
         valid_customer_ids = set(customer_join_dates)
 
         duplicates = accounts.duplicated(subset=list(self.ACCOUNT_COLUMNS), keep="first")
+        conflicts = self._conflicting_ids(accounts, "account_id", self.ACCOUNT_COLUMNS)
         all_reasons = []
         for position, (_, row) in enumerate(accounts.iterrows()):
             reasons = []
@@ -250,6 +280,8 @@ class DataValidator:
 
             if duplicates.iloc[position]:
                 reasons.append("duplicate_account")
+            if conflicts[position]:
+                reasons.append("conflicting_account_id")
             all_reasons.append(reasons)
 
         accepted_positions = [i for i, reasons in enumerate(all_reasons) if not reasons]
@@ -273,6 +305,9 @@ class DataValidator:
         valid_branch_ids = self._branch_ids(branches)
         duplicates = transactions.duplicated(
             subset=list(self.TRANSACTION_COLUMNS), keep="first"
+        )
+        conflicts = self._conflicting_ids(
+            transactions, "transaction_id", self.TRANSACTION_COLUMNS
         )
         all_reasons = []
         for position, (_, row) in enumerate(transactions.iterrows()):
@@ -320,6 +355,8 @@ class DataValidator:
 
             if duplicates.iloc[position]:
                 reasons.append("duplicate_transaction")
+            if conflicts[position]:
+                reasons.append("conflicting_transaction_id")
             all_reasons.append(reasons)
 
         accepted_positions = [i for i, reasons in enumerate(all_reasons) if not reasons]
@@ -339,6 +376,7 @@ class DataValidator:
 
         account_open_dates = self._account_open_dates(accepted_accounts)
         duplicates = payments.duplicated(subset=list(self.PAYMENT_COLUMNS), keep="first")
+        conflicts = self._conflicting_ids(payments, "payment_id", self.PAYMENT_COLUMNS)
         all_reasons = []
         for position, (_, row) in enumerate(payments.iterrows()):
             reasons = []
@@ -375,6 +413,8 @@ class DataValidator:
 
             if duplicates.iloc[position]:
                 reasons.append("duplicate_payment")
+            if conflicts[position]:
+                reasons.append("conflicting_payment_id")
             all_reasons.append(reasons)
 
         accepted_positions = [i for i, reasons in enumerate(all_reasons) if not reasons]

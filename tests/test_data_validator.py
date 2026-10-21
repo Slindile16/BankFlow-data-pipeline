@@ -265,7 +265,9 @@ def test_unsupported_account_type_is_rejected(
     assert rejected.iloc[0]["rejection_reasons"] == ["invalid_account_type"]
 
 
-@pytest.mark.parametrize("balance", ["unknown", "1.234", "Infinity", "NaN"])
+@pytest.mark.parametrize(
+    "balance", ["unknown", "1.234", "Infinity", "NaN", "10000000000.00"]
+)
 def test_nonnumeric_or_invalid_precision_balance_is_rejected(
     validator, valid_account, accepted_customers, valid_branches, balance
 ):
@@ -347,6 +349,20 @@ def test_exact_duplicate_accounts_keep_first_occurrence(
     assert rejected["rejection_reasons"].tolist() == [["duplicate_account"]]
 
 
+def test_conflicting_account_ids_reject_every_version(
+    validator, valid_account, accepted_customers, valid_branches
+):
+    alternate = {**valid_account, "balance": "200.00"}
+    accepted, rejected = validator.validate_accounts(
+        pd.DataFrame([valid_account, alternate]), accepted_customers, valid_branches
+    )
+
+    assert accepted.empty
+    assert rejected["rejection_reasons"].tolist() == [
+        ["conflicting_account_id"], ["conflicting_account_id"]
+    ]
+
+
 def test_account_validation_reports_multiple_issues_and_does_not_mutate_input(
     validator, valid_account, accepted_customers, valid_branches
 ):
@@ -361,10 +377,12 @@ def test_account_validation_reports_multiple_issues_and_does_not_mutate_input(
     )
 
     pd.testing.assert_frame_equal(source, original)
-    assert len(accepted) == 1
-    assert set(rejected.iloc[0]["rejection_reasons"]) == {
+    assert accepted.empty
+    assert len(rejected) == 2
+    assert rejected.iloc[0]["rejection_reasons"] == ["conflicting_account_id"]
+    assert set(rejected.iloc[1]["rejection_reasons"]) == {
         "unknown_customer_id", "unknown_branch_id", "invalid_account_type",
-        "invalid_balance", "invalid_opened_date",
+        "invalid_balance", "invalid_opened_date", "conflicting_account_id",
     }
 
 
@@ -543,6 +561,30 @@ def test_exact_duplicate_branches_keep_first_occurrence(validator, valid_branch)
     assert rejected["rejection_reasons"].tolist() == [["duplicate_branch"]]
 
 
+def test_conflicting_branch_ids_reject_every_version(validator, valid_branch):
+    alternate = {**valid_branch, "city": "Cape Town"}
+    accepted, rejected = validator.validate_branches(
+        pd.DataFrame([valid_branch, alternate])
+    )
+
+    assert accepted.empty
+    assert rejected["rejection_reasons"].tolist() == [
+        ["conflicting_branch_id"], ["conflicting_branch_id"]
+    ]
+
+
+def test_conflicting_customer_ids_reject_every_version(validator, valid_customer):
+    alternate = {**valid_customer, "last_name": "Other"}
+    accepted, rejected = validator.validate_customers(
+        pd.DataFrame([valid_customer, alternate])
+    )
+
+    assert accepted.empty
+    assert rejected["rejection_reasons"].tolist() == [
+        ["conflicting_customer_id"], ["conflicting_customer_id"]
+    ]
+
+
 def test_branch_validation_rejects_missing_schema_and_does_not_mutate_input(
     validator, valid_branch
 ):
@@ -603,7 +645,9 @@ def test_unsupported_transaction_type_is_rejected(
     assert rejected.iloc[0]["rejection_reasons"] == ["invalid_transaction_type"]
 
 
-@pytest.mark.parametrize("amount", ["invalid", "1.234", "Infinity", "NaN"])
+@pytest.mark.parametrize(
+    "amount", ["invalid", "1.234", "Infinity", "NaN", "10000000000.00"]
+)
 def test_invalid_transaction_amount_is_rejected(
     validator, valid_transaction, accepted_accounts, valid_branches, amount
 ):
@@ -685,6 +729,20 @@ def test_exact_duplicate_transactions_keep_first_occurrence(
     assert rejected["rejection_reasons"].tolist() == [["duplicate_transaction"]]
 
 
+def test_conflicting_transaction_ids_reject_every_version(
+    validator, valid_transaction, accepted_accounts, valid_branches
+):
+    alternate = {**valid_transaction, "amount": "200.00"}
+    accepted, rejected = validator.validate_transactions(
+        pd.DataFrame([valid_transaction, alternate]), accepted_accounts, valid_branches
+    )
+
+    assert accepted.empty
+    assert rejected["rejection_reasons"].tolist() == [
+        ["conflicting_transaction_id"], ["conflicting_transaction_id"]
+    ]
+
+
 def test_valid_payment_is_accepted_and_source_values_are_preserved(
     validator, valid_payment, accepted_accounts
 ):
@@ -730,7 +788,9 @@ def test_unsupported_payment_status_is_rejected(
     assert rejected.iloc[0]["rejection_reasons"] == ["invalid_status"]
 
 
-@pytest.mark.parametrize("amount", ["invalid", "1.234", "Infinity", "NaN"])
+@pytest.mark.parametrize(
+    "amount", ["invalid", "1.234", "Infinity", "NaN", "10000000000.00"]
+)
 def test_invalid_payment_amount_is_rejected(
     validator, valid_payment, accepted_accounts, amount
 ):
@@ -799,3 +859,17 @@ def test_exact_duplicate_payments_keep_first_occurrence(
     pd.testing.assert_frame_equal(accepted, source.iloc[[0]])
     pd.testing.assert_frame_equal(rejected[source.columns], source.iloc[[1]])
     assert rejected["rejection_reasons"].tolist() == [["duplicate_payment"]]
+
+
+def test_conflicting_payment_ids_reject_every_version(
+    validator, valid_payment, accepted_accounts
+):
+    alternate = {**valid_payment, "amount": "200.00"}
+    accepted, rejected = validator.validate_payments(
+        pd.DataFrame([valid_payment, alternate]), accepted_accounts
+    )
+
+    assert accepted.empty
+    assert rejected["rejection_reasons"].tolist() == [
+        ["conflicting_payment_id"], ["conflicting_payment_id"]
+    ]
