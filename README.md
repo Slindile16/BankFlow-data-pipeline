@@ -14,10 +14,13 @@ dashboard is optional future work.
 
 ## Video demonstration
 
-The BankFlow video walkthrough explains the project and demonstrates the pipeline,
-accepted and rejected records, SQL schema and Docker scheduling.
+**Watch BankFlow in action!**
 
-[Watch the BankFlow project demonstration on YouTube](https://youtu.be/mK56ikMALH4).
+Watch the project demo on YouTube to see how BankFlow turns raw banking data into
+clean, organised datasets. The video walks through the pipeline, accepted and
+rejected records, SQL schema and Docker scheduling.
+
+**[Watch the demo on YouTube](https://youtu.be/mK56ikMALH4)**
 
 ## How it works
 
