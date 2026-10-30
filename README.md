@@ -12,6 +12,13 @@ optional PostgreSQL loading.
 tests, daily scheduling, Docker support and runtime logging. A reporting
 dashboard is optional future work.
 
+## Video demonstration
+
+The BankFlow video walkthrough explains the project and demonstrates the pipeline,
+accepted and rejected records, SQL schema and Docker scheduling.
+
+[Watch the BankFlow project demonstration on YouTube](https://youtu.be/mK56ikMALH4).
+
 ## How it works
 
 ```text
